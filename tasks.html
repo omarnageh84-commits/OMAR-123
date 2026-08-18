@@ -1,6 +1,27 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
-<head>
+<head><style>
+@font-face {
+  font-family: "Optimistic";
+  font-style: normal;
+  font-weight: 400 600;
+  font-display: swap;
+  src: url("/fonts/OptimisticAI_VF_Optimized.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Optimistic Mono";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/OptimisticMono_W_TextRegular.woff2") format("woff2");
+}
+:where(html) {
+  font-family: "Optimistic", system-ui, sans-serif;
+}
+:where(code, pre, kbd, samp) {
+  font-family: "Optimistic Mono", ui-monospace, monospace;
+}
+</style>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;600;700;800&display=swap" rel="stylesheet">
 <link rel="manifest" href="manifest.json">
@@ -8,6 +29,50 @@
 <title>مساحة العمل - Gmail + Themes</title>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <script src="https://apis.google.com/js/api.js" async defer></script>
+
+<script>
+const THEMES = [
+  {id:'amber', name:'عنبر دافئ 🌅', hero:'#D97706', bg:'#FDF6E3', bgSoft:'#FFF7ED', card:'#FFFFFF', border:'#F5E6C8', text:'#1C1917', soft:'#A16207'},
+  {id:'dark', name:'ليلي 🌙', hero:'#111111', bg:'#121212', bgSoft:'#1E1E1E', card:'#1A1A1A', border:'#2A2A2A', text:'#FFFFFF', soft:'#888888'},
+  {id:'pharmacy', name:'صيدلية 💊', hero:'#0EA5E9', bg:'#F0F9FF', bgSoft:'#E0F2FE', card:'#FFFFFF', border:'#BAE6FD', text:'#0C4A6E', soft:'#0284C7'},
+  {id:'forest', name:'غابة 🌿', hero:'#16A34A', bg:'#F0FDF4', bgSoft:'#DCFCE7', card:'#FFFFFF', border:'#BBF7D0', text:'#14532D', soft:'#15803D'},
+  {id:'rose', name:'وردي 🌸', hero:'#E11D48', bg:'#FFF1F2', bgSoft:'#FFE4E6', card:'#FFFFFF', border:'#FECDD3', text:'#881337', soft:'#BE123C'},
+];
+function applyTheme(t){
+  const r=document.documentElement;
+  r.style.setProperty('--hero', t.hero);
+  r.style.setProperty('--bg', t.bg);
+  r.style.setProperty('--bg-soft', t.bgSoft);
+  r.style.setProperty('--card', t.card);
+  r.style.setProperty('--card-border', t.border);
+  r.style.setProperty('--text', t.text);
+  r.style.setProperty('--text-soft', t.soft);
+  r.style.setProperty('--primary', t.hero);
+  localStorage.setItem('selectedTheme', t.id);
+  document.body.style.background = t.bg;
+}
+function renderThemesList(){
+  const box=document.getElementById('themesList');
+  if(!box) return;
+  const curId=localStorage.getItem('selectedTheme')||'amber';
+  box.innerHTML=THEMES.map(t=>`
+    <div onclick="applyThemeById('${t.id}')" style="display:flex;justify-content:space-between;align-items:center;padding:10px;border-radius:10px;border:2px solid ${t.id===curId?'var(--hero)':'var(--card-border)'};background:${t.bg};cursor:pointer;margin-bottom:6px">
+      <div style="display:flex;gap:8px;align-items:center"><div style="width:22px;height:22px;border-radius:6px;background:${t.hero};border:1px solid #0002"></div><span style="font-size:11px;font-weight:800;color:${t.text}">${t.name}</span></div>
+      <span style="font-size:12px;font-weight:900">${t.id===curId?'✓':''}</span>
+    </div>
+  `).join('');
+}
+function applyThemeById(id){
+  const t=THEMES.find(x=>x.id===id);
+  if(t){ applyTheme(t); renderThemesList(); }
+}
+(function(){
+  const saved=localStorage.getItem('selectedTheme')||'amber';
+  const t=THEMES.find(x=>x.id===saved);
+  if(t) applyTheme(t);
+})();
+</script>
+
 <script src="themes.js"></script>
 <style>
 :root{--hero:#D97706;--bg:#FDF6E3;--bg-soft:#FFF7ED;--card:#FFFFFF;--card-border:#F5E6C8;--text:#1C1917;--text-soft:#A16207;--primary:#D97706}
@@ -216,61 +281,4 @@ function toggleRem(){const en=document.getElementById('remEnabled').checked;docu
 function updateRepeatUI(){const v=document.getElementById('remRepeat').value;document.getElementById('customRepeatBox').style.display=(v.startsWith('custom')||v=='weekdays')?'block':'none';document.getElementById('customDaysUI').style.display=v=='custom_days'?'block':'none';document.getElementById('customHoursUI').style.display=v=='custom_hours'?'block':'none';document.getElementById('weekdaysUI').style.display=v=='weekdays'?'block':'none';updateNextPreview();}
 function updateEndUI(){const v=document.getElementById('remEndType').value;document.getElementById('remAfterCount').style.display=v=='after'?'block':'none';document.getElementById('remEndDate').style.display=v=='onDate'?'block':'none';updateNextPreview();}
 function getProReminder(){return{enabled:document.getElementById('remEnabled').checked,date:document.getElementById('remDate').value,time:document.getElementById('remTime').value,repeat:document.getElementById('remRepeat').value,everyDays:parseInt(document.getElementById('remEveryDays')?.value||2),everyHours:parseInt(document.getElementById('remEveryHours')?.value||3),weekdays:Array.from(document.querySelectorAll('.wd:checked')).map(x=>parseInt(x.value)),endType:document.getElementById('remEndType').value,afterCount:parseInt(document.getElementById('remAfterCount')?.value||0),endDate:document.getElementById('remEndDate')?.value||null,countDone:cur?.reminder?.countDone||0}}
-function getNextReminderTimePro(rem){if(!rem||!rem.enabled||!rem.date||!rem.time) return null;let dt=new Date(rem.date+'T'+rem.time);const now=new Date();if(rem.repeat==='none') return dt>now?dt:null; let loop=0; while(dt<=now && loop<1000){loop++; if(rem.repeat==='daily') dt.setDate(dt.getDate()+1); else if(rem.repeat==='weekly') dt.setDate(dt.getDate()+7); else if(rem.repeat==='monthly') dt.setMonth(dt.getMonth()+1); else if(rem.repeat==='yearly') dt.setFullYear(dt.getFullYear()+1); else if(rem.repeat==='custom_days') dt.setDate(dt.getDate()+rem.everyDays); else if(rem.repeat==='custom_hours') dt.setHours(dt.getHours()+rem.everyHours); else if(rem.repeat==='weekdays'){do{dt.setDate(dt.getDate()+1);}while(!rem.weekdays.includes(dt.getDay()));} else break; if(rem.endType==='onDate' && rem.endDate && dt>new Date(rem.endDate)) return null; if(rem.endType==='after' && rem.countDone>=rem.afterCount) return null;} return dt;}
-function updateNextPreview(){const r=getProReminder();const next=getNextReminderTimePro(r);document.getElementById('remNext').innerText=next?`القادم: ${next.toLocaleString('ar-EG')}`:'حدد الوقت';}
-async function saveReminderPro(){if(!cur) return; const rem=getProReminder(); if(!rem.date||!rem.time){alert('حدد التاريخ والوقت');return;} if(Notification && Notification.permission!=='granted'){await Notification.requestPermission();} if('serviceWorker' in navigator){try{await navigator.serviceWorker.register('sw.js');}catch(e){}} cur.reminder=rem; save(); startReminderChecker(); alert(`✅ تم حفظ المنبه\\nالقادم: ${getNextReminderTimePro(rem).toLocaleString('ar-EG')}`);}
-function startReminderChecker(){if(window._remInterval) clearInterval(window._remInterval); window._remInterval=setInterval(()=>{const now=new Date(); tasks.forEach(t=>{if(!t.reminder||!t.reminder.enabled) return; const next=getNextReminderTimePro(t.reminder); if(!next) return; const diff=(next-now)/1000/60; if(diff>=0&&diff<1){showProNotification(t); if(t.reminder.endType==='after'){t.reminder.countDone=(t.reminder.countDone||0)+1;} save();}});},60000);}
-function showProNotification(task){if(Notification && Notification.permission==='granted'){const n=new Notification(task.text,{body:task.cat,requireInteraction:true}); n.onclick=()=>{window.focus(); openCard(task.id);};} try{new Audio('https://actions.google.com/sounds/v1/alarms/beep_short.ogg').play();}catch(e){}}
-function openCard(id){cur=tasks.find(x=>x.id===id);if(!cur) return; if(!cur.photos)cur.photos=[];document.getElementById('modalTitle').innerText=cur.text;document.getElementById('modalCover').style.background=cur.color;document.getElementById('currentColorPreview').style.background=cur.color;document.getElementById('noteEditor').innerHTML=cur.note||'';currentNoteColor='#111111';currentFontSize=12;currentHiddenFontSize=12;lastNoteRange=null;lastHiddenRange=null;document.getElementById('doneBtn').innerText=cur.done?'إعادة فتح':'تم ✓';document.getElementById('allColorsBox').style.display='none';if(cur.reminder){document.getElementById('remEnabled').checked=cur.reminder.enabled;document.getElementById('remDate').value=cur.reminder.date||'';document.getElementById('remTime').value=cur.reminder.time||'';document.getElementById('remRepeat').value=cur.reminder.repeat||'none';document.getElementById('remEndType').value=cur.reminder.endType||'never';if(cur.reminder.everyDays) document.getElementById('remEveryDays').value=cur.reminder.everyDays;if(cur.reminder.everyHours) document.getElementById('remEveryHours').value=cur.reminder.everyHours;toggleRem();updateRepeatUI();updateEndUI();}else{document.getElementById('remEnabled').checked=false;toggleRem();}refreshSubtasks();refreshDrawGallery();refreshVoiceList();refreshPhotos();renderExcelTheme();document.getElementById('modal').style.display='flex';tab('note');setTimeout(()=>{resizeCanvas();setupNoteListeners();},100);}
-function closeModal(){document.getElementById('modal').style.display='none';closeCamera();if(cur){cur.text=document.getElementById('modalTitle').innerText.trim()||cur.text;cur.note=document.getElementById('noteEditor').innerHTML;save();}}
-function tab(t){['Colors','Camera','Draw','Voice','Note','Rem','Hidden'].forEach(k=>{const p=document.getElementById('p'+k);const b=document.getElementById('t'+k);if(p){p.style.display=(k.toLowerCase()===t.toLowerCase()?(k.toLowerCase()==='note'?'flex':'block'):'none');}if(b&&k!=='Hidden')b.classList.toggle('active',k.toLowerCase()===t.toLowerCase());});if(t==='note'||t==='hidden')setTimeout(setupNoteListeners,50);}
-function setupNoteListeners(){const ed=document.getElementById('noteEditor');const hd=document.getElementById('hiddenBody');if(ed){ed.addEventListener('keyup',()=>{const sel=window.getSelection(); if(sel.rangeCount) lastNoteRange=sel.getRangeAt(0).cloneRange();});ed.addEventListener('mouseup',()=>{const sel=window.getSelection(); if(sel.rangeCount) lastNoteRange=sel.getRangeAt(0).cloneRange();});}if(hd){hd.addEventListener('keyup',()=>{const sel=window.getSelection(); if(sel.rangeCount) lastHiddenRange=sel.getRangeAt(0).cloneRange();});hd.addEventListener('mouseup',()=>{const sel=window.getSelection(); if(sel.rangeCount) lastHiddenRange=sel.getRangeAt(0).cloneRange();});}}
-function restoreNoteRange(){const ed=document.getElementById('noteEditor');ed.focus();if(lastNoteRange){const sel=window.getSelection();sel.removeAllRanges();sel.addRange(lastNoteRange);}}
-function restoreHiddenRange(){const ed=document.getElementById('hiddenBody');ed.focus();if(lastHiddenRange){const sel=window.getSelection();sel.removeAllRanges();sel.addRange(lastHiddenRange);}}
-function applyNoteColor(color){currentNoteColor=color;restoreNoteRange();document.execCommand('styleWithCSS',false,true);document.execCommand('foreColor',false,color);const sel=window.getSelection(); if(sel.rangeCount) lastNoteRange=sel.getRangeAt(0).cloneRange();}
-function changeFontSize(d){currentFontSize=Math.max(8,Math.min(28,currentFontSize+d));restoreNoteRange();document.execCommand('styleWithCSS',false,true);document.execCommand('fontSize',false,5);document.getElementById('noteEditor').querySelectorAll('font[size="5"]').forEach(f=>{f.removeAttribute('size');f.style.fontSize=currentFontSize+'px';f.style.color=currentNoteColor;});}
-function formatNote(cmd){restoreNoteRange();document.execCommand(cmd,false,null);const sel=window.getSelection(); if(sel.rangeCount) lastNoteRange=sel.getRangeAt(0).cloneRange();}
-function applyHiddenColor(color){currentHiddenColor=color;restoreHiddenRange();document.execCommand('styleWithCSS',false,true);document.execCommand('foreColor',false,color);}
-function changeHiddenFontSize(d){currentHiddenFontSize=Math.max(8,Math.min(28,currentHiddenFontSize+d));restoreHiddenRange();document.execCommand('styleWithCSS',false,true);document.execCommand('fontSize',false,5);document.getElementById('hiddenBody').querySelectorAll('font[size="5"]').forEach(f=>{f.removeAttribute('size');f.style.fontSize=currentHiddenFontSize+'px';f.style.color=currentHiddenColor;});}
-function formatHidden(cmd){restoreHiddenRange();document.execCommand(cmd,false,null);}
-function refreshSubtasks(){if(!cur) return;const total=cur.subtasks.length,done=cur.subtasks.filter(s=>s.done).length,perc=total?Math.round(done/total*100):0;document.getElementById('subProgress').innerText=`${fmt(done)}/${fmt(total)}`;document.getElementById('subBar').style.width=perc+'%';document.getElementById('subList').innerHTML=cur.subtasks.map(s=>`<div style="display:flex;gap:7px;align-items:center;background:var(--bg-soft);padding:6px 8px;border-radius:8px;border:1px solid var(--card-border)"><input type="checkbox" ${s.done?'checked':''} onchange="toggleSub(${s.id})"><div contenteditable="true" onblur="editSub(${s.id},this.innerText)" style="flex:1;font-size:10.3px">${formatTextNumbers(s.text)}</div><button onclick="delSub(${s.id})" style="border:none;background:var(--card);width:23px;height:23px;border-radius:5px;color:#ef4444">✕</button></div>`).join('')||`<div style="text-align:center;color:var(--text-soft);font-size:10.3px;padding:7px;">مفيش مهام فرعية</div>`;}
-function addSub(){const inp=document.getElementById('subInput');if(!inp.value.trim())return;cur.subtasks.push({id:Date.now(),text:inp.value.trim(),done:false});inp.value='';refreshSubtasks();save();}
-function toggleSub(sid){const s=cur.subtasks.find(x=>x.id===sid);s.done=!s.done;refreshSubtasks();save();}
-function delSub(sid){cur.subtasks=cur.subtasks.filter(x=>x.id!==sid);refreshSubtasks();save();}
-function editSub(sid,txt){const s=cur.subtasks.find(x=>x.id===sid);if(s){s.text=txt.trim()||s.text;save();}}
-function resizeCanvas(){if(!canvas) return;const r=canvas.getBoundingClientRect();canvas.width=r.width*2;canvas.height=184*2;ctx.setTransform(1,0,0,1,0,0);ctx.scale(2,2);ctx.lineCap='round';ctx.lineJoin='round';}
-function pos(e){const rect=canvas.getBoundingClientRect();const pt=e.touches?e.touches[0]:e;return{x:pt.clientX-rect.left,y:pt.clientY-rect.top};}
-if(canvas){canvas.addEventListener('mousedown',e=>{drawing=true;const p=pos(e);lx=p.x;ly=p.y;});canvas.addEventListener('mousemove',e=>{if(!drawing)return;const p=pos(e);ctx.strokeStyle=document.getElementById('penColor').value;ctx.lineWidth=document.getElementById('penSize').value;ctx.beginPath();ctx.moveTo(lx,ly);ctx.lineTo(p.x,p.y);ctx.stroke();lx=p.x;ly=p.y;});window.addEventListener('mouseup',()=>drawing=false);canvas.addEventListener('touchstart',e=>{e.preventDefault();drawing=true;const p=pos(e);lx=p.x;ly=p.y;},{passive:false});canvas.addEventListener('touchmove',e=>{e.preventDefault();if(!drawing)return;const p=pos(e);ctx.strokeStyle=document.getElementById('penColor').value;ctx.lineWidth=document.getElementById('penSize').value;ctx.beginPath();ctx.moveTo(lx,ly);ctx.lineTo(p.x,p.y);ctx.stroke();lx=p.x;ly=p.y;},{passive:false});canvas.addEventListener('touchend',()=>drawing=false);}
-function clearCanvas(){ctx.clearRect(0,0,canvas.width,canvas.height);}function saveDraw(){const d=canvas.toDataURL();if(!cur.drawings)cur.drawings=[];cur.drawings.unshift(d);clearCanvas();refreshDrawGallery();save();}function refreshDrawGallery(){if(!cur) return;document.getElementById('drawGallery').innerHTML=(cur.drawings||[]).map((d,i)=>`<div style="position:relative;"><img src="${d}" style="width:58px;height:58px;object-fit:cover;border-radius:8px;border:1px solid var(--card-border);"><button onclick="delDraw(${i})" style="position:absolute;top:-5px;right:-5px;width:18px;height:18px;border-radius:50%;background:#ef4444;color:#fff;border:none;font-size:9px">✕</button></div>`).join('');}function delDraw(i){cur.drawings.splice(i,1);refreshDrawGallery();save();}
-async function toggleRec(){const btn=document.getElementById('recBtn');if(!rec||rec.state==='inactive'){try{stream=await navigator.mediaDevices.getUserMedia({audio:true});rec=new MediaRecorder(stream);chunks=[];rec.ondataavailable=e=>chunks.push(e.data);rec.onstop=()=>{const blob=new Blob(chunks,{type:'audio/webm'});const r=new FileReader();r.onloadend=()=>{if(!cur.voices)cur.voices=[];cur.voices.unshift(r.result);refreshVoiceList();save();};r.readAsDataURL(blob);};rec.start();btn.style.background='var(--hero)';btn.innerHTML='■';sec=0;timerInt=setInterval(()=>{sec++;document.getElementById('timer').innerText=String(Math.floor(sec/60)).padStart(2,'0')+':'+String(sec%60).padStart(2,'0');},1000);}catch{alert('فعل الميكروفون');}}else{rec.stop();stream.getTracks().forEach(t=>t.stop());clearInterval(timerInt);btn.style.background='#ef4444';btn.innerHTML='●';document.getElementById('timer').innerText='00:00';}}
-function refreshVoiceList(){if(!cur) return;document.getElementById('voiceList').innerHTML=(cur.voices||[]).map((v,i)=>`<div style="display:flex;gap:7px;align-items:center;background:var(--card);border:1px solid var(--card-border);padding:7px;border-radius:9px;"><audio src="${v}" controls style="flex:1;height:32px;"></audio><button onclick="delVoice(${i})" style="background:#FEE2E2;border:none;width:32px;height:32px;border-radius:8px;color:#ef4444">✕</button></div>`).join('');}function delVoice(i){cur.voices.splice(i,1);refreshVoiceList();save();}function saveNote(){if(!cur) return;cur.note=document.getElementById('noteEditor').innerHTML;save();alert('تم الحفظ ✅');}
-function toggleDone(){cur.done=!cur.done;save();document.getElementById('doneBtn').innerText=cur.done?'إعادة فتح':'تم ✓';}
-function deleteCurrent(){if(!cur)return;document.getElementById('delTaskPreview').innerHTML=`<div style="font-weight:800;color:var(--text);font-size:11.5px">${formatTextNumbers(cur.text)}</div><div style="font-size:9.2px;color:var(--text-soft)">${cur.cat}</div>`;document.getElementById('delConfirmCheck').checked=false;toggleDelBtn();document.getElementById('deleteWarningModal').classList.add('show');}
-function closeDeleteWarning(){document.getElementById('deleteWarningModal').classList.remove('show')}
-function toggleDelBtn(){const c=document.getElementById('delConfirmCheck').checked;const b=document.getElementById('finalDelBtn');b.disabled=!c;b.style.background=c?'#ef4444':'#E5E7EB';b.style.color=c?'#fff':'#9CA3AF';}
-function confirmDelete(){if(!cur)return;tasks=tasks.filter(x=>x.id!==cur.id);closeDeleteWarning();closeModal();save();}
-render(); startReminderChecker();
-function openSecretModal(){document.getElementById('secretCodeModal').classList.add('show');const s=getSecretCode();document.getElementById('secretInput').value=s;document.getElementById('currentCodeHint').innerText=`رقمك الحالي: ${s}`;}
-function closeSecretModal(){document.getElementById('secretCodeModal').classList.remove('show')}
-function saveSecretCode(){const v=document.getElementById('secretInput').value.trim();if(!v||v.length<2){alert('اكتب رقم');return}localStorage.setItem('__my_secret_num__',btoa(v));closeSecretModal();save();}
-let hKey=null,hNotes=[];const H_CFG='__sys_pref_cache__',H_DATA='__sys_pref_data__';
-async function deriveKey(p,s){const e=new TextEncoder();const km=await crypto.subtle.importKey('raw',e.encode(p),{name:'PBKDF2'},false,['deriveKey']);return crypto.subtle.deriveKey({name:'PBKDF2',salt:s,iterations:120000,hash:'SHA-256'},km,{name:'AES-GCM',length:256},false,['encrypt','decrypt'])}
-async function hEnc(d,k){const iv=crypto.getRandomValues(new Uint8Array(12));const ct=await crypto.subtle.encrypt({name:'AES-GCM',iv},k,new TextEncoder().encode(JSON.stringify(d)));return{iv:Array.from(iv),ct:Array.from(new Uint8Array(ct))}}
-async function hDec(o,k){try{const dec=await crypto.subtle.decrypt({name:'AES-GCM',iv:new Uint8Array(o.iv)},k,new Uint8Array(o.ct));return JSON.parse(new TextDecoder().decode(dec))}catch{return null}}
-function revealHiddenTab(){const btn=document.getElementById('tHidden');btn.style.display='block';btn.animate([{transform:'scale(0)'},{transform:'scale(1.15)'},{transform:'scale(1)'}],{duration:300});if(document.getElementById('modal').style.display==='none'){if(tasks[0])openCard(tasks[0].id);else{tasks.unshift({id:Date.now(),text:'مهمة',cat:cats[0].name,color:'#fff',done:false,drawings:[],photos:[],voices:[],note:'',subtasks:[],reminder:null});save();openCard(tasks[0].id)}}setTimeout(()=>tab('hidden'),350);}
-function hideHiddenTab(){lockHidden();document.getElementById('tHidden').style.display='none';tab('note');}
-function lockHidden(){hKey=null;const auth=document.getElementById('hiddenAuth');const content=document.getElementById('hiddenContent');if(auth) auth.style.display='block';if(content) content.style.display='none';const pass=document.getElementById('hPass');if(pass) pass.value='';const err=document.getElementById('hErr');if(err) err.style.display='none';}
-async function unlockHidden(){const pass=document.getElementById('hPass').value.trim();if(pass.length<2){document.getElementById('hErr').style.display='block';document.getElementById('hErr').innerText='قصير';return}const cfg=JSON.parse(localStorage.getItem(H_CFG)||'null');try{if(!cfg){const salt=crypto.getRandomValues(new Uint8Array(16));const key=await deriveKey(pass,salt);const enc=await hEnc([],key);localStorage.setItem(H_CFG,JSON.stringify({salt:Array.from(salt)}));localStorage.setItem(H_DATA,JSON.stringify(enc));hKey=key;hNotes=[];}else{const key=await deriveKey(pass,new Uint8Array(cfg.salt));const dataObj=JSON.parse(localStorage.getItem(H_DATA)||'null');let dec=null;if(dataObj)dec=await hDec(dataObj,key);if(dataObj&&dec===null)throw new Error('wrong');hKey=key;hNotes=dec||[];}document.getElementById('hiddenAuth').style.display='none';document.getElementById('hiddenContent').style.display='block';renderHidden();}catch(e){const er=document.getElementById('hErr');er.style.display='block';er.innerText='رقم غلط!';}}
-async function saveHiddenData(){if(!hKey)return;const enc=await hEnc(hNotes,hKey);localStorage.setItem(H_DATA,JSON.stringify(enc))}
-function renderHidden(){const q=(document.getElementById('hSearch').value||'').toLowerCase();const list=document.getElementById('hList');const f=hNotes.filter(n=>!q||n.title.toLowerCase().includes(q)||n.body.toLowerCase().includes(q)).sort((a,b)=>b.id-a.id);if(!f.length){list.innerHTML=`<div style="text-align:center;padding:16px;color:var(--text-soft);font-size:10.3px">مفيش نوتس</div>`;return}list.innerHTML=f.map(n=>`<div class="hidden-note"><div style="display:flex;justify-content:space-between"><b style="font-size:11.5px">${n.title.replace(/</g,'&lt;')}</b><div style="display:flex;gap:5px"><button onclick="editHidden(${n.id})" style="background:var(--bg-soft);border:1px solid var(--card-border);color:var(--text);width:23px;height:23px;border-radius:6px;font-size:11.5px">✏</button><button onclick="delHidden(${n.id})" style="background:#3a1515;border:none;color:#ff6b6b;width:23px;height:23px;border-radius:6px;font-size:11.5px">✕</button></div></div><div style="font-size:10.3px;color:#ccc;margin-top:5px;">${n.body}</div></div>`).join('');}
-let editingHiddenId=null;
-function openHiddenEditor(){editingHiddenId=null;document.getElementById('hiddenTitle').value='';document.getElementById('hiddenBody').innerHTML='';currentHiddenColor='#ffffff';document.getElementById('hiddenEditorBox').style.display='block';setTimeout(()=>{setupNoteListeners();},50);}
-function closeHiddenEditor(){document.getElementById('hiddenEditorBox').style.display='none';}
-function saveHiddenRich(){const title=document.getElementById('hiddenTitle').value.trim()||'بدون عنوان';const body=document.getElementById('hiddenBody').innerHTML.trim();if(!body)return;if(editingHiddenId){const n=hNotes.find(x=>x.id===editingHiddenId);if(n){n.title=title;n.body=body;}}else{hNotes.unshift({id:Date.now(),title,body});}saveHiddenData();renderHidden();closeHiddenEditor();editingHiddenId=null;}
-function editHidden(id){const n=hNotes.find(x=>x.id===id);if(!n)return;editingHiddenId=id;document.getElementById('hiddenTitle').value=n.title;document.getElementById('hiddenBody').innerHTML=n.body;document.getElementById('hiddenEditorBox').style.display='block';setTimeout(()=>{setupNoteListeners();},50);}
-function delHidden(id){if(!confirm('تحذف؟'))return;hNotes=hNotes.filter(x=>x.id!==id);saveHiddenData();renderHidden()}
-async function openChangePassword(){const newPass=prompt('الرقم الجديد:');if(!newPass||newPass.length<2){alert('قصير');return;}const confirmPass=prompt('أكد الرقم:');if(newPass!==confirmPass){alert('مش زي بعض');return;}try{const salt=crypto.getRandomValues(new Uint8Array(16));const newKey=await deriveKey(newPass,salt);const enc=await hEnc(hNotes,newKey);localStorage.setItem(H_CFG,JSON.stringify({salt:Array.from(salt)}));localStorage.setItem(H_DATA,JSON.stringify(enc));localStorage.setItem('__my_secret_num__',btoa(newPass));hKey=newKey;alert(`تم تغيير الرقم لـ ${newPass}`);}catch(err){alert('فشل');}}
-let pressTimer=null;const vaultEl=document.getElementById('vaultTrigger');vaultEl.addEventListener('mousedown',()=>{pressTimer=setTimeout(openSecretModal,2500)});vaultEl.addEventListener('mouseup',()=>clearTimeout(pressTimer));vaultEl.addEventListener('mouseleave',()=>clearTimeout(pressTimer));vaultEl.addEventListener('touchstart',()=>{pressTimer=setTimeout(openSecretModal,2500)},{passive:true});vaultEl.addEventListener('touchend',()=>clearTimeout(pressTimer));
-</script>
-</body>
-</html>
+function getNe
