@@ -1,6 +1,27 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
-<head>
+<head><style>
+@font-face {
+  font-family: "Optimistic";
+  font-style: normal;
+  font-weight: 400 600;
+  font-display: swap;
+  src: url("/fonts/OptimisticAI_VF_Optimized.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Optimistic Mono";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/OptimisticMono_W_TextRegular.woff2") format("woff2");
+}
+:where(html) {
+  font-family: "Optimistic", system-ui, sans-serif;
+}
+:where(code, pre, kbd, samp) {
+  font-family: "Optimistic Mono", ui-monospace, monospace;
+}
+</style>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#16A34A">
@@ -11,23 +32,29 @@
 <style>
 :root{--bg:#F0FDF4;--card:#fff;--card-border:#BBF7D0;--text:#14532D;--text-soft:#4ADE80;--hero:#16A34A;--nav-bg:rgba(255,255,255,0.9)}
 *{box-sizing:border-box;margin:0;padding:0;font-family:'IBM Plex Sans Arabic',sans-serif}
-body{background:var(--bg);height:100dvh;overflow:hidden}
-.pageWrap{position:absolute;inset:0 0 88px 0;background:var(--bg)}
+body{background:var(--bg);height:100dvh;overflow:hidden;transition:background .3s}
+.pageWrap{position:absolute;inset:0 0 88px 0;background:var(--bg);top:52px}
 .page{position:absolute;inset:0;width:100%;height:100%;border:none;opacity:0;pointer-events:none;transition:opacity.25s;background:var(--bg)}
 .page.active{opacity:1;pointer-events:auto;z-index:2}
 .nav{position:fixed;bottom:14px;left:14px;right:14px;height:70px;background:var(--nav-bg);backdrop-filter:blur(24px);border:1.5px solid var(--card-border);border-radius:22px;display:flex;align-items:center;padding:7px;gap:6px;z-index:100;box-shadow:0 20px 40px -12px rgba(0,0,0,.15)}
 .nav button{flex:1;height:100%;border:none;background:transparent;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;border-radius:15px;color:var(--text-soft);font-size:9.5px;font-weight:700;cursor:pointer;transition:.2s}
 .nav button.active{background:var(--hero);color:#fff}
 #installBanner{display:none;position:fixed;top:10px;left:10px;right:10px;background:#14532D;color:#fff;padding:10px 12px;border-radius:12px;z-index:999;justify-content:space-between;align-items:center;font-size:11px}
-#gdrive-status{position:fixed;top:0;left:0;right:0;z-index:90;text-align:center;padding:6px;font-size:9px;font-weight:800;cursor:pointer;transition:.3s}
+#statusBar{position:fixed;top:0;left:0;right:0;z-index:90;display:flex;flex-direction:column;gap:0}
+#gdrive-status,#theme-status,#gmail-status{text-align:center;padding:5px;font-size:9px;font-weight:800;cursor:pointer;transition:.3s;display:flex;justify-content:center;align-items:center;gap:6px}
+#gdrive-status{background:#FEF3C7;color:#92400E}
+#theme-status{background:var(--bg-soft);color:var(--text-soft);border-bottom:1px solid var(--card-border)}
 </style>
 </head>
 <body>
 <div id="installBanner"><span>📲 تثبيت كتطبيق APK؟</span><button id="btnInstall" style="background:#fff;color:#14532D;border:none;padding:6px 10px;border-radius:8px;font-weight:800">تثبيت</button></div>
 
-<div id="gdrive-status" style="background:#FEF3C7;color:#92400E">⏳ جاري ربط Google Drive...</div>
+<div id="statusBar">
+  <div id="gdrive-status" onclick="GoogleDrive.signIn()">⏳ جاري ربط Google Drive...</div>
+  <div id="theme-status" onclick="openThemeManager()">🎨 الثيم: <span id="themeName">عنبر دافئ</span> - اضغط للتغيير</div>
+</div>
 
-<div class="pageWrap" style="top:28px">
+<div class="pageWrap">
   <iframe data-page="home.html" src="home.html" class="page active" title="home"></iframe>
   <iframe data-page="daily.html" src="about:blank" class="page" title="daily"></iframe>
   <iframe data-page="attendance.html" src="about:blank" class="page" title="attendance"></iframe>
@@ -38,7 +65,7 @@ body{background:var(--bg);height:100dvh;overflow:hidden}
   <button class="active" onclick="switchPage('home.html',this)"><span style="font-size:18px">🏠</span><span>الرئيسية</span></button>
   <button onclick="switchPage('daily.html',this)"><span style="font-size:18px">📊</span><span>اليومية</span></button>
   <button onclick="switchPage('attendance.html',this)"><span style="font-size:18px">⏱</span><span>الحضور</span></button>
-  <button onclick="switchPage('tasks.html',this)"><span style="font-size:18px">✓</span><span>المهام</span></button>
+  <button onclick="switchPage('tasks.html',this)"><span style="font-size:18px">✓</span><span>المهام</span><span id="gmailDot" style="display:none;width:6px;height:6px;background:#22c55e;border-radius:50%"></span></button>
 </nav>
 
 <script>
@@ -46,12 +73,46 @@ body{background:var(--bg);height:100dvh;overflow:hidden}
 let deferredPrompt=null;
 window.addEventListener('beforeinstallprompt', (e)=>{ e.preventDefault(); deferredPrompt=e; document.getElementById('installBanner').style.display='flex'; });
 document.getElementById('btnInstall').onclick=async()=>{ if(deferredPrompt){ deferredPrompt.prompt(); await deferredPrompt.userChoice; deferredPrompt=null; document.getElementById('installBanner').style.display='none'; } };
+if('serviceWorker' in navigator){ navigator.serviceWorker.register('./sw.js').then(()=>console.log('SW OK')).catch(()=>{}); }
 
-if('serviceWorker' in navigator){
-  navigator.serviceWorker.register('./sw.js').then(()=>console.log('SW OK')).catch(()=>{});
+// Theme status update
+function updateThemeStatus(){
+  const saved = localStorage.getItem('selectedTheme')||'amber';
+  const themes = {amber:'عنبر دافئ 🌅', dark:'ليلي 🌙', pharmacy:'صيدلية 💊', forest:'غابة 🌿', rose:'وردي 🌸'};
+  document.getElementById('themeName').innerText = themes[saved]||saved;
+  // Apply to index vars too
+  if(window.THEMES){
+    const t = THEMES.find(x=>x.id===saved);
+    if(t){
+      document.documentElement.style.setProperty('--hero', t.hero);
+      document.documentElement.style.setProperty('--bg', t.bg);
+      document.querySelector('meta[name="theme-color"]').content = t.hero;
+    }
+  }
+  checkGmailStatus();
+}
+function openThemeManager(){
+  // Open tasks manager themes tab directly
+  switchPage('tasks.html', document.querySelectorAll('.nav button')[3]);
+  setTimeout(()=>{
+    try{
+      const frame = document.querySelector('iframe[data-page="tasks.html"]');
+      if(frame.contentWindow.openManager) frame.contentWindow.openManager();
+      if(frame.contentWindow.mTab) frame.contentWindow.mTab('themes');
+    }catch(e){}
+  },600);
+}
+function checkGmailStatus(){
+  const gmailToken = localStorage.getItem('gmail_token') || localStorage.getItem('_gdrive_token');
+  const dot = document.getElementById('gmailDot');
+  if(gmailToken){
+    dot.style.display='block';
+  }else{
+    dot.style.display='none';
+  }
 }
 
-// Navigation - يصلح مشكلة الشكل الضايع
+// Navigation
 const frames=document.querySelectorAll('.page');
 function switchPage(name,btn){
   frames.forEach(f=>{
@@ -60,25 +121,28 @@ function switchPage(name,btn){
     if(is && f.src.includes('about:blank')){
       f.src=name+'?v='+Date.now();
     }
-    if(is && f.dataset.page==='home.html'){
-      try{ f.contentWindow.R(); }catch(e){}
-    }
-    if(is && f.dataset.page==='daily.html'){
+    if(is){
+      try{ if(f.contentWindow.R) f.contentWindow.R(); }catch(e){}
       try{ if(f.contentWindow.renderAll) f.contentWindow.renderAll(); }catch(e){}
+      try{ if(f.contentWindow.render) f.contentWindow.render(); }catch(e){}
     }
   });
   document.querySelectorAll('.nav button').forEach(b=>b.classList.remove('active'));
-  btn.classList.add('active');
+  if(btn) btn.classList.add('active');
+  updateThemeStatus();
 }
 window.switchPage=switchPage;
 
-// تحديث كل ال iframes لما الدرايف يربط
-document.addEventListener('gdrive-data-updated', ()=>{
-  frames.forEach(f=>{ try{ if(f.contentWindow && f.contentWindow.R) f.contentWindow.R(); if(f.contentWindow && f.contentWindow.renderAll) f.contentWindow.renderAll(); }catch(e){} });
-});
-document.addEventListener('gdrive-ready', ()=>{
-  frames.forEach(f=>{ try{ if(f.contentWindow && f.contentWindow.R) f.contentWindow.R(); if(f.contentWindow && f.contentWindow.renderAll) f.contentWindow.renderAll(); }catch(e){} });
+// Listen to drive updates
+document.addEventListener('gdrive-data-updated', ()=>{ frames.forEach(f=>{ try{ if(f.contentWindow && f.contentWindow.R) f.contentWindow.R(); if(f.contentWindow && f.contentWindow.renderAll) f.contentWindow.renderAll(); if(f.contentWindow && f.contentWindow.render) f.contentWindow.render(); }catch(e){} }); });
+document.addEventListener('gdrive-ready', ()=>{ frames.forEach(f=>{ try{ if(f.contentWindow && f.contentWindow.R) f.contentWindow.R(); }catch(e){} }); updateThemeStatus(); });
+
+// Initial
+window.addEventListener('DOMContentLoaded', ()=>{
+  updateThemeStatus();
+  setInterval(checkGmailStatus, 2000);
+  setInterval(updateThemeStatus, 2000);
 });
 </script>
-</body>
+<script>(function(){var loc=location.href.replace(/#.*$/,"");var ATTR_NAMES=["data-product-id","data-productid","data-product_id","product-id","productid","product_id","data-source-entity-id","source-entity-id","source_entity_id","data-product","data-metadata","data-meta"];var DATASET_KEYS=["productId","productid","product_id","sourceEntityId","sourceentityid","source_entity_id","product","metadata","meta"];function readProductId(value){if(typeof value!=="string"||value.length===0)return null;if(/^[0-9]{6,}$/.test(value))return value;var match=value.match(/(?:product(?:_|-)?id|source(?:_|-)?entity(?:_|-)?id)["'=:\s]+([0-9]{6,})/i);return match?match[1]:null}function extractProductId(start){for(var node=start;node&&node!==document.body;node=node.parentElement){for(var i=0;i<ATTR_NAMES.length;i++){var attrValue=node.getAttribute&&node.getAttribute(ATTR_NAMES[i]);var attrProductId=readProductId(attrValue);if(attrProductId)return attrProductId}var dataset=node.dataset||null;if(dataset){for(var j=0;j<DATASET_KEYS.length;j++){var dataValue=dataset[DATASET_KEYS[j]];var dataProductId=readProductId(dataValue);if(dataProductId)return dataProductId}}}return null}function isInlineMediaSlotElement(node){return !!(node&&node.getAttribute&&node.getAttribute("data-clippy-inline-media-slot")!==null)}function findInlineMediaSlot(start){for(var node=start;node&&node!==document.body;node=node.parentElement){if(isInlineMediaSlotElement(node))return node}return null}function readInlineMediaUrl(node){if(!node)return null;return node.getAttribute&&((node.getAttribute("data-clippy-inline-media-url")||node.getAttribute("data-url")||node.getAttribute("data_url")))||node.href||null}function stripHash(url){return String(url).replace(/#.*$/,"")}function urlsMatch(a,b){if(!a||!b)return false;try{return stripHash(new URL(a,loc).href)===stripHash(new URL(b,loc).href)}catch(_){return stripHash(a)===stripHash(b)}}function isFirstPartyReelUrl(value){try{var url=new URL(value,loc);if(url.protocol!=="https:")return false;var host=url.hostname.toLowerCase();var supported=host==="instagram.com"||host.endsWith(".instagram.com")||host==="facebook.com"||host.endsWith(".facebook.com");return supported&&/\/reels?\//i.test(url.pathname)}catch(_){return false}}function isInlineMediaUrlClick(node,href){var slot=findInlineMediaSlot(node);if(!slot)return false;var slotUrl=readInlineMediaUrl(slot);if(slotUrl)return urlsMatch(href,slotUrl);return isFirstPartyReelUrl(href)}function findDataHref(start){for(var node=start;node&&node!==document.body;node=node.parentElement){if(node.getAttribute){var href=node.getAttribute("data-href")||node.getAttribute("data-url");if(href)return{href:href,node:node}}}return null}var nativeOpen=window.open;window.open=function(url){if(parent!==window&&typeof url==="string"&&/^https?:\/\//.test(url)){parent.postMessage({type:"ecto:usercontent-link-click",href:url},"*");return null}return nativeOpen?nativeOpen.apply(window,arguments):null};document.addEventListener("click",function(e){var target=e.target instanceof Element?e.target:null;if(!target)return;if(parent===window)return;var a=target.closest?target.closest("a[href]"):null;if(a&&a.href&&/^https?:\/\//.test(a.href)&&a.href.replace(/#.*$/,"")!==loc){if(isInlineMediaUrlClick(a,a.href))return;var productId=extractProductId(target)||extractProductId(a);if(productId){e.preventDefault();parent.postMessage({type:"ecto-artifact-link-click",productId:productId},"*");return}e.preventDefault();parent.postMessage({type:"ecto:usercontent-link-click",href:a.href},"*");return}var dataHref=findDataHref(target);if(dataHref&&/^https?:\/\//.test(dataHref.href)&&dataHref.href.replace(/#.*$/,"")!==loc){if(isInlineMediaUrlClick(dataHref.node,dataHref.href))return;e.preventDefault();parent.postMessage({type:"ecto:usercontent-link-click",href:dataHref.href},"*")}},true)})();</script><script>(function(){var FOCUS_TYPE="ecto:artifact-focus-request";var CLOSE_TYPE="ecto:artifact-close-request";function focusArtifactDocument(){var body=document.body;if(!body)return;try{window.focus();}catch(e){}if(!body.hasAttribute("tabindex"))body.setAttribute("tabindex","-1");try{body.focus({preventScroll:true});}catch(e){try{body.focus();}catch(e2){}}}window.addEventListener("message",function(event){if(event.source!==window.parent)return;var data=event.data;if(!data||typeof data!=="object"||data.type!==FOCUS_TYPE)return;if(document.readyState==="loading"){document.addEventListener("DOMContentLoaded",focusArtifactDocument,{once:true});return;}focusArtifactDocument();});window.addEventListener("keydown",function(event){if(event.key!=="Escape")return;window.setTimeout(function(){if(event.defaultPrevented)return;window.parent.postMessage({type:CLOSE_TYPE},"*");},0);});})();</script></body>
 </html>
