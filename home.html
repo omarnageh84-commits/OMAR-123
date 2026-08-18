@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Home - Omar</title>
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@700;800;900&display=swap" rel="stylesheet">
+<script src="themes.js"></script>
+<script src="google-drive.js"></script>
+<style>
+:root{--bg:#f0f7ff;--card:#fff;--border:#dbeafe;--text:#1e3a8a;--hero:#2563eb}
+*{box-sizing:border-box;margin:0;padding:0;font-family:'Tajawal',sans-serif}
+body{background:var(--bg);padding:10px;padding-bottom:90px}
+.top-card{background:var(--card);border:1.5px solid var(--border);border-radius:14px;padding:10px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center}
+.color-row{display:flex;gap:8px;background:var(--card);border:1.5px solid var(--border);border-radius:12px;padding:8px;margin-bottom:10px}
+.cdot{width:22px;height:22px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 1.5px #e2e8f0;cursor:pointer}
+.cdot.active{box-shadow:0 0 0 2.5px var(--hero)}
+.blue-card{background:linear-gradient(135deg,#2563eb,#1d4ed8);color:#fff;border-radius:16px;padding:14px;margin-bottom:10px}
+.blue-card h2{font-size:16px;font-weight:900;margin:6px 0}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
+.card{background:var(--card);border:1.5px solid var(--border);border-radius:12px;padding:10px;text-align:center}
+.card .v{font-size:18px;font-weight:900;color:var(--text)}
+.card .l{font-size:9px;color:#64748b;font-weight:700}
+.actions{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.act{background:var(--card);border:1.5px solid var(--border);border-radius:12px;padding:10px;text-align:center;cursor:pointer}
+.act span{font-size:20px;display:block}
+.act label{font-size:9px;font-weight:800;display:block;margin-top:4px}
+</style>
+</head>
+<body>
+<div id="gdrive-status" style="background:#DCFCE7;color:#14532D;text-align:center;padding:6px;border-radius:8px;font-size:9px;font-weight:800;margin-bottom:8px">☁️ مربوط بـ Gmail Drive ✅ - الداتا في Drive</div>
+<script>if(window.top!==window.self){var b=document.getElementById('gdrive-status'); if(b) b.style.display='none'; }</script>
+
+<div class="top-card"><span style="font-weight:900">⚙️</span><span style="font-weight:900">أهلاً يا عمر ✨</span></div>
+
+<div class="color-row" id="colorRow">
+  <div class="cdot" style="background:#f59e0b" onclick="setTheme('orange')"></div>
+  <div class="cdot active" style="background:#2563eb" onclick="setTheme('blue')"></div>
+  <div class="cdot" style="background:#16a34a" onclick="setTheme('green')"></div>
+  <div class="cdot" style="background:#9333ea" onclick="setTheme('purple')"></div>
+  <div class="cdot" style="background:#e11d48" onclick="setTheme('red')"></div>
+  <div class="cdot" style="background:#0f172a" onclick="setTheme('dark')"></div>
+</div>
+
+<div class="blue-card">
+  <div style="font-size:9px;opacity:.8">وردية اليوم • الحضور</div>
+  <h2>لم يبدأ بعد</h2>
+  <div style="display:flex;gap:8px;margin-top:10px">
+    <button onclick="doCheck('in')" style="flex:1;background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.3);color:#fff;border-radius:10px;padding:10px;font-family:'Tajawal';font-weight:900;cursor:pointer">👆 حضور</button>
+    <button onclick="doCheck('out')" style="flex:1;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.2);color:#fff;border-radius:10px;padding:10px;font-family:'Tajawal';font-weight:700;cursor:pointer">✓ انصراف</button>
+  </div>
+</div>
+
+<div class="grid">
+  <div class="card"><div class="l">💰 الرصيد الحالي</div><div class="v" id="balNow">0</div><div class="l">اضغط للتفاصيل →</div></div>
+  <div class="card"><div class="l">📊 إجمالي الشهر</div><div class="v" id="monthTotal">0</div><div class="l">0 عملية</div></div>
+  <div class="card"><div class="l">💸 مصروف الشهر</div><div class="v" id="expMonth">0</div><div class="l">منذ ق</div></div>
+  <div class="card"><div class="l">💳 الديون</div><div class="v" id="debts">0</div><div class="l">حالة متأخرة</div></div>
+  <div class="card"><div class="l">🔐 الأمانات</div><div class="v" id="aman">0</div><div class="l">كشف محاسبة</div></div>
+  <div class="card"><div class="l">⭐ التقييم</div><div class="v">0</div><div class="l">كشف محاسبة</div></div>
+</div>
+
+<div style="background:var(--card);border:1.5px solid var(--border);border-radius:12px;padding:10px;margin-bottom:10px">
+  <div style="font-size:11px;font-weight:900;margin-bottom:8px">دخول سريع</div>
+  <div class="actions">
+    <div class="act" onclick="parent.switchPage('daily.html', parent.document.querySelectorAll('.nav button')[1])"><span>💸</span><label>مصروف</label></div>
+    <div class="act" onclick="parent.switchPage('daily.html', parent.document.querySelectorAll('.nav button')[1])"><span>💵</span><label>دخل</label></div>
+    <div class="act"><span>✓</span><label>مهمة</label></div>
+    <div class="act"><span>⏱️</span><label>حضور</label></div>
+  </div>
+</div>
+
+<script>
+function setTheme(n){ if(window.applyTheme) applyTheme(n); if(window.setTheme) setTheme(n); localStorage.setItem('theme',n); }
+function R(){ try{ const tx=JSON.parse(localStorage.getItem('omar_tx_v3')||'[]'); const bal=tx.filter(t=>t.type!=='amanat'&&t.affect!==false).reduce((a,b)=>{let v=Number(b.amount)||0; if(b.type==='expense') v=-v; if(b.type==='debt') v=b.direction==='عليا'?-v:v; return a+v;},0); document.getElementById('balNow').textContent=bal.toLocaleString(); }catch(e){} }
+function doCheck(type){ alert(type==='in'?'تم تسجيل الحضور':'تم تسجيل الانصراف'); }
+R();
+document.addEventListener('gdrive-data-updated', R);
+document.addEventListener('gdrive-ready', R);
+</script>
+</body>
+</html>
