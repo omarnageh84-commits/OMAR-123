@@ -1,27 +1,6 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
-<head><style>
-@font-face {
-  font-family: "Optimistic";
-  font-style: normal;
-  font-weight: 400 600;
-  font-display: swap;
-  src: url("/fonts/OptimisticAI_VF_Optimized.woff2") format("woff2");
-}
-@font-face {
-  font-family: "Optimistic Mono";
-  font-style: normal;
-  font-weight: 400;
-  font-display: swap;
-  src: url("/fonts/OptimisticMono_W_TextRegular.woff2") format("woff2");
-}
-:where(html) {
-  font-family: "Optimistic", system-ui, sans-serif;
-}
-:where(code, pre, kbd, samp) {
-  font-family: "Optimistic Mono", ui-monospace, monospace;
-}
-</style>
+<head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>Daily - Omar System Pro</title>
@@ -224,3 +203,28 @@ function openAdd(id=null, forcedTab=null){
 }
 function closeAdd(){document.getElementById('addModal').classList.remove('open');editingId=null;}
 function onDebtStatusChange(){const status=document.getElementById('add-status').value;const personSel=document.getElementById('add-person');personSel.innerHTML=getPersonsOptions(status);}
+function handlePhoto(input){const file=input.files[0];if(!file)return;const reader=new FileReader();reader.onload=e=>{photoData=e.target.result;const prev=document.getElementById('photoPrev');prev.src=photoData;prev.style.display='block';document.getElementById('btn-photo').classList.add('has-data');};reader.readAsDataURL(file);}
+function toggleVoice(){const btn=document.getElementById('btn-voice');if(mediaRecorder&&mediaRecorder.state==='recording'){mediaRecorder.stop();return;}navigator.mediaDevices.getUserMedia({audio:true}).then(stream=>{mediaRecorder=new MediaRecorder(stream);mediaRecorder.onstart=()=>{btn.classList.add('has-data');document.getElementById('voiceTxt').textContent='جاري...';};mediaRecorder.onstop=()=>{document.getElementById('voiceTxt').textContent='تم ✅';stream.getTracks().forEach(t=>t.stop());};mediaRecorder.start();}).catch(()=>alert('الميكروفون مقفول'));}
+function showToast(msg,type=''){const t=document.getElementById('toast');t.textContent=msg;t.className='toast '+type;t.style.display='block';setTimeout(()=>t.style.display='none',3500);}
+async function saveTx(){const wallet=document.getElementById('add-wallet').value;const amount=Number(document.getElementById('add-amount').value);const date=document.getElementById('add-date').value;const itemSel=document.getElementById('add-item-select');const item=(itemSel?.value||'').trim();const personSel=document.getElementById('add-person');const person=(personSel?.value||'').trim();const direction=document.getElementById('add-direction')?.value||'عليا';const status=document.getElementById('add-status')?.value||'due';const affectSel=document.getElementById('add-affect-sel')?.value||'yes'; const affect=affectSel==='yes';const note=document.getElementById('add-note')?.value||'';if(!amount||!date){showToast('⚠️ ادخل القيمة والتاريخ','error');return;}if(currentTab==='expense' && (!item||item==='__new')){showToast('⚠️ اختر بند المصروف','error');return;}if(currentTab==='income' && (!item||item==='__new')){showToast('⚠️ اختر بند الدخل','error');return;}if((currentTab==='debt'||currentTab==='amanat')&&(!person||person==='__new')){showToast('⚠️ اختر اسم الشخص','error');return;}let tx={id:editingId||Date.now().toString(),type:currentTab,wallet,amount,date,item:item||person||'أمانة',person,direction,status,affect,photo:photoData||null,note};if(editingId){const idx=transactions.findIndex(t=>t.id===editingId);transactions[idx]=tx;} else transactions.push(tx);if(person&&!persons.find(p=>p.name===person))persons.push({name:person});persist();renderAll();closeAdd();initSelects();showToast(`✅ تم الحفظ: ${item||person} - ${amount.toLocaleString()} ج`);}
+function delTx(id){if(!id){showToast('⚠️ لا يوجد عملية','error');return;} const t=transactions.find(x=>x.id===id); if(!t){showToast('⚠️ غير موجود','error');return;} pendingDeleteId=id; document.getElementById('confirmAmount').textContent=`${t.item||t.person} - ${Number(t.amount).toLocaleString()} ج`; document.getElementById('confirmDelete').classList.add('open');}
+function closeConfirm(){document.getElementById('confirmDelete').classList.remove('open');pendingDeleteId=null;}
+function confirmDeleteAction(){if(!pendingDeleteId)return;transactions=transactions.filter(t=>t.id!==pendingDeleteId);persist();renderAll();closeConfirm();showToast('🗑️ تم المسح','error');pendingDeleteId=null;initSelects();}
+function editTx(id){ if(!id){showToast('⚠️ لا يمكن تعديل','error');return;} const tx=transactions.find(x=>x.id===id); if(!tx){showToast('⚠️ غير موجود','error');return;} let tab='expense'; if(tx.type==='income') tab='income'; else if(tx.type.startsWith('debt')) tab='debt'; else if(tx.type==='amanat') tab='amanat'; openAdd(id, tab); }
+let profAddType=null;
+function addBand(type){profAddType=type;const modal=document.getElementById('profAddModal');const title=document.getElementById('profTitle');const label=document.getElementById('profLabel');const input=document.getElementById('profInput');const hint=document.getElementById('profHint');input.value='';if(type==='expense'){title.textContent='➕ إضافة بند مصروف';label.textContent='اسم بند المصروف';input.placeholder='مثال: بنزين، فطار...';hint.textContent='هيضاف لجدول المصروف';} else if(type==='income'){title.textContent='➕ إضافة بند دخل';label.textContent='اسم بند الدخل';input.placeholder='مثال: مبيعات...';hint.textContent='هيضاف لجدول الدخل';} else if(type==='debt-due'){title.textContent='➕ إضافة شخص - مستحق';label.textContent='اسم الشخص';input.placeholder='مثال: أحمد...';hint.textContent='هيضاف لجدول مستحق';} else if(type==='debt-def'){title.textContent='➕ إضافة شخص - مؤجل';label.textContent='اسم الشخص';input.placeholder='مثال: أحمد...';hint.textContent='هيضاف لجدول مؤجل';} else if(type==='amanat'){title.textContent='➕ إضافة مؤتمن';label.textContent='اسم المؤتمن';input.placeholder='مثال: مصطفى...';hint.textContent='هيضاف لجدول الأمانات';} modal.classList.add('open');setTimeout(()=>input.focus(),100);}
+function closeProfAdd(){document.getElementById('profAddModal').classList.remove('open');profAddType=null;}
+function confirmProfAdd(){const name=document.getElementById('profInput').value.trim();if(!name){showToast('⚠️ اكتب الاسم','error');return;}const today=new Date().toISOString().slice(0,10);if(profAddType==='expense' || profAddType==='income'){transactions.push({id:Date.now().toString(),type:profAddType,item:name,amount:0,date:today,wallet:'كاش',affect:false});} else if(profAddType==='debt-due' || profAddType==='debt-def'){const st=profAddType==='debt-due'?'due':'deferred';transactions.push({id:Date.now().toString(),type:'debt',item:'دين '+name,person:name,amount:0,date:today,wallet:'كاش',direction:'عليا',status:st,affect:false});if(!persons.find(p=>p.name===name)) persons.push({name:name});} else if(profAddType==='amanat'){transactions.push({id:Date.now().toString(),type:'amanat',item:'أمانة '+name,person:name,amount:0,date:today,wallet:'الخزنة',affect:false});if(!persons.find(p=>p.name===name)) persons.push({name:name});} persist(); renderAll(); initSelects(); closeProfAdd();showToast(`✅ تم إضافة: ${name}`);}
+let pendingWalletOld=null;let pendingWalletDelete=null;
+function editWallet(oldName){pendingWalletOld=oldName;document.getElementById('walletEditInput').value=oldName;document.getElementById('walletEditModal').classList.add('open');}
+function closeWalletEdit(){document.getElementById('walletEditModal').classList.remove('open');pendingWalletOld=null;}
+function confirmWalletEdit(){const newName=document.getElementById('walletEditInput').value.trim();if(!newName){showToast('⚠️ اكتب الاسم','error');return;}const idx=walletsDefault.indexOf(pendingWalletOld);if(idx!==-1) walletsDefault[idx]=newName;transactions.forEach(t=>{ if(t.wallet===pendingWalletOld) t.wallet=newName; });persist(); renderAll(); initSelects(); closeWalletEdit();showToast(`✅ تم تعديل: ${newName}`);}
+function deleteWallet(name){pendingWalletDelete=name;document.getElementById('walletDeleteName').textContent=`"${name}"`;document.getElementById('walletDeleteModal').classList.add('open');}
+function closeWalletDelete(){document.getElementById('walletDeleteModal').classList.remove('open');pendingWalletDelete=null;}
+function confirmWalletDelete(){const name=pendingWalletDelete;walletsDefault=walletsDefault.filter(w=>w!==name);persist(); renderAll(); initSelects(); closeWalletDelete();showToast(`🗑️ تم مسح: ${name}`);}
+// Drive sync listeners
+addEventListener('gdrive-data-updated',()=>{try{transactions=JSON.parse(localStorage.getItem('omar_tx_v3')||'[]');persons=JSON.parse(localStorage.getItem('omar_persons_v3')||'[]');}catch(e){} renderAll(); initSelects();});
+addEventListener('gdrive-ready',()=>{try{transactions=JSON.parse(localStorage.getItem('omar_tx_v3')||'[]');persons=JSON.parse(localStorage.getItem('omar_persons_v3')||'[]');}catch(e){} renderAll(); initSelects();});
+</script>
+</body>
+</html>
