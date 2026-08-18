@@ -1,185 +1,122 @@
-// Google Drive Sync - مربوط بجيميل فقط - مفيش Firebase
-// الداتا كلها في Google Drive AppData Folder (مخفي)
-
-const GDRIVE_CONFIG = {
-  clientId: "430114765758-pcre3l9eegi2iuhk3761k2t5irafs30o.apps.googleusercontent.com",
-  apiKey: "", // مش لازم
-  fileName: "OmarWorkspace.json",
-  keys: ['omar_tx_v3','omar_master_bands','omar_wallets_v3','att_fixed_final','att_hols_fixed','att_notes','attendance_log','tasks_v6','debts_pro_v2','omar_important','omar_theme','theme']
-};
-
-let tokenClient = null;
-let accessToken = null;
-let gapiInited = false;
-let gisInited = false;
-let fileId = null;
-
-function loadGapi(){
-  return new Promise((res,rej)=>{
-    if(window.gapi) return res();
-    const s=document.createElement('script');
-    s.src="https://apis.google.com/js/api.js";
-    s.onload=()=>{ gapi.load('client', async ()=>{
-      await gapi.client.init({ discoveryDocs:["https://www.googleapis.com/discovery/v1/apis/drive/v3/rest"] });
-      gapiInited=true; res();
-    });};
-    s.onerror=rej;
-    document.head.appendChild(s);
-  });
-}
-
-function loadGis(){
-  return new Promise((res,rej)=>{
-    if(window.google?.accounts) return res();
-    const s=document.createElement('script');
-    s.src="https://accounts.google.com/gsi/client";
-    s.onload=()=>{ gisInited=true; res(); };
-    s.onerror=rej;
-    document.head.appendChild(s);
-  });
-}
-
-async function initGoogleDrive(){
-  if(GDRIVE_CONFIG.clientId.includes('YOUR_GOOGLE')) {
-    updateUIStatus('not-configured');
-    return;
-  }
-  await Promise.all([loadGapi(), loadGis()]);
-  
-  tokenClient = google.accounts.oauth2.initTokenClient({
-    client_id: GDRIVE_CONFIG.clientId,
-    scope: "https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.appdata https://www.googleapis.com/auth/drive.readonly",
-    callback: async (resp)=>{
-      if(resp.error){ console.error(resp); updateUIStatus('disconnected'); return; }
-      accessToken = resp.access_token;
-      gapi.client.setToken({access_token: accessToken});
-      localStorage.setItem('_gdrive_token', accessToken);
-      updateUIStatus('connected');
-      document.dispatchEvent(new CustomEvent('gdrive-ready'));
-      await pullFromDrive();
-    }
-  });
-
-  // لو فيه توكن قديم جرب
-  const saved = localStorage.getItem('_gdrive_token');
-  if(saved){
-    accessToken = saved;
-    gapi.client.setToken({access_token: saved});
-    updateUIStatus('connected');
-    try { await pullFromDrive(); } catch(e){ updateUIStatus('disconnected'); }
-  } else {
-    updateUIStatus('disconnected');
-  }
-}
-
-function signInGoogle(){
-  if(GDRIVE_CONFIG.clientId.includes('YOUR_GOOGLE')){
-    alert('لازم تحط Google Client ID الاول\n\nروح Google Cloud Console واعمل OAuth Client ID\nشوف README');
-    return;
-  }
-  if(!tokenClient){ initGoogleDrive().then(()=> tokenClient.requestAccessToken({prompt: 'consent'})); return; }
-  tokenClient.requestAccessToken({prompt: 'consent'});
-}
-
-function signOutGoogle(){
-  if(accessToken){
-    try{ google.accounts.oauth2.revoke(accessToken); }catch(e){}
-    accessToken=null; fileId=null;
-    localStorage.removeItem('_gdrive_token');
-    gapi.client.setToken(null);
-    updateUIStatus('disconnected');
-  }
-}
-
-function updateUIStatus(state){
-  const el=document.getElementById('gdrive-status') || document.getElementById('onedrive-status');
-  if(!el) return;
-  if(state==='connected'){
-    el.innerHTML = '☁ مربوط بـ Gmail Drive ✅ - الداتا في Drive';
-    el.style.background='#DCFCE7'; el.style.color='#14532D';
-    el.onclick=null;
-  } else if(state==='disconnected'){
-    el.innerHTML = '⚠ اضغط هنا للربط بجيميل (Google Drive)';
-    el.style.background='#FEF3C7'; el.style.color='#92400E';
-    el.onclick=signInGoogle;
-  } else if(state==='not-configured'){
-    el.innerHTML = '⚙ حط Google Client ID في google-drive.js';
-    el.style.background='#FEE2E2'; el.style.color='#991B1B';
-  }
-}
-
-// Push to Drive AppData
-async function pushToDrive(){
-  if(!accessToken){ console.log('no token'); return; }
-  const payload={};
-  GDRIVE_CONFIG.keys.forEach(k=>{ payload[k]=localStorage.getItem(k); });
-  payload._lastSync = new Date().toISOString();
-  payload._version = 3;
-
-  const fileContent = JSON.stringify(payload);
-  const blob = new Blob([fileContent], {type:'application/json'});
-  
-  try{
-    if(!fileId){
-      const list = await gapi.client.drive.files.list({ spaces:'appDataFolder', q: `name='${GDRIVE_CONFIG.fileName}'`, fields:'files(id,name)' });
-      if(list.result.files.length>0) fileId = list.result.files[0].id;
-    }
-
-    if(fileId){
-      await fetch(`https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=media`, {
-        method:'PATCH',
-        headers:{'Authorization':'Bearer '+accessToken},
-        body: blob
-      });
-    } else {
-      const metadata = { name: GDRIVE_CONFIG.fileName, parents:['appDataFolder'] };
-      const form = new FormData();
-      form.append('metadata', new Blob([JSON.stringify(metadata)], {type:'application/json'}));
-      form.append('file', blob);
-      const res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
-        method:'POST',
-        headers:{'Authorization':'Bearer '+accessToken},
-        body: form
-      });
-      const j = await res.json();
-      fileId = j.id;
-    }
-    console.log('✅ pushed to Google Drive');
-    localStorage.setItem('_gdrive_last_push', new Date().toISOString());
-  }catch(e){ console.error('push failed',e); }
-}
-
-async function pullFromDrive(){
-  if(!accessToken) return false;
-  try{
-    const list = await gapi.client.drive.files.list({ spaces:'appDataFolder', q: `name='${GDRIVE_CONFIG.fileName}'`, fields:'files(id,name,modifiedTime)' });
-    if(list.result.files.length===0){ console.log('no file yet'); await pushToDrive(); return false; }
-    fileId = list.result.files[0].id;
-    const res = await gapi.client.drive.files.get({ fileId, alt:'media' });
-    let data = res.result;
-    let jsonData = data;
-    if(typeof data === 'string'){
-      try{ jsonData = JSON.parse(data); }catch(e){ jsonData = data; }
-    }
-    if(!jsonData._lastSync && (!jsonData || typeof jsonData === 'string')){
-      const r = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {headers:{'Authorization':'Bearer '+accessToken}});
-      jsonData = await r.json();
-    }
-    GDRIVE_CONFIG.keys.forEach(k=>{ if(jsonData[k]!==undefined && jsonData[k]!==null) localStorage.setItem(k, jsonData[k]); });
-    console.log('✅ pulled from Drive', jsonData._lastSync);
-    document.dispatchEvent(new CustomEvent('gdrive-data-updated'));
-    document.dispatchEvent(new CustomEvent('onedrive-data-updated'));
-    return true;
-  }catch(e){ console.error('pull failed',e); return false; }
-}
-
-window.saveData = async function(){ await pushToDrive(); }
-window.deleteData = async function(){ await pushToDrive(); }
-window.GoogleDrive = { init:initGoogleDrive, signIn:signInGoogle, signOut:signOutGoogle, push:pushToDrive, pull:pullFromDrive };
-window.OneDrive = window.GoogleDrive;
-
-let pushTimer=null;
-const origSet = localStorage.setItem.bind(localStorage);
-localStorage.setItem = function(k,v){ origSet(k,v); if(GDRIVE_CONFIG.keys.includes(k)){ clearTimeout(pushTimer); pushTimer=setTimeout(()=>pushToDrive(), 1200); } };
-
-window.addEventListener('DOMContentLoaded', initGoogleDrive);
+<!DOCTYPE html><html lang="en" class="optimisticai_d4925249-module__WZtcjq__variable optimisticmono_9b82a078-module__hMSRWa__variable light"><head><meta charSet="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="/_next/static/chunks/0_n83orcwyk4s.css" data-precedence="next"/><link rel="stylesheet" href="/_next/static/chunks/0-bxp60fb64eq.css" data-precedence="next"/><link rel="stylesheet" href="/_next/static/chunks/42e7h9g2vn8e3.css" data-precedence="next"/><link rel="stylesheet" href="/_next/static/chunks/287l5xq35imjj.css" data-precedence="next"/><link rel="stylesheet" href="/_next/static/chunks/17oghy4n4g9qf.css" data-precedence="next"/><link rel="preload" as="script" fetchPriority="low" href="/_next/static/chunks/2itn9ngb6p3qo.js"/><script src="/_next/static/chunks/39xbnorphzdz6.js" async=""></script><script src="/_next/static/chunks/1imdq5pvxjkaa.js" async=""></script><script src="/_next/static/chunks/turbopack-33jkvrwdsucwr.js" async=""></script><script src="/_next/static/chunks/2iu626gff_4cy.js" async=""></script><script src="/_next/static/chunks/0ki9k916thcjn.js" async=""></script><meta name="next-size-adjust" content=""/><script>(function(){try{var d=document.documentElement,m=window.matchMedia("(prefers-color-scheme: dark)");function a(){var c=d.classList;if(m.matches){c.remove("light");c.add("dark");}else{c.remove("dark");c.add("light");}}a();m.addEventListener("change",a);}catch(e){}})()</script><meta name="sentry-trace" content="84f5be0b6d643e259912cae1dfd1e057-7f458be124b52bc0-0"/><meta name="baggage" content="sentry-environment=production,sentry-release=bac752df1c01c02a492f66134cfced3c2f765d3b,sentry-public_key=217336c598020d63d1a44137ff8fdb71,sentry-trace_id=84f5be0b6d643e259912cae1dfd1e057,sentry-org_id=4509963614355457,sentry-sampled=false,sentry-sample_rand=0.9917200483074892,sentry-sample_rate=0.1"/><script src="/_next/static/chunks/0cz1d0mv5g_q7.js" noModule=""></script></head><body><div hidden=""><!--$--><!--/$--></div><div class="min-h-dvh px-6 pt-8 pb-8 font-mono text-[14px] leading-[1.6]"><pre class="mx-auto flex max-w-[1000px] items-start bg-transparent"><div class="text-text-tertiary border-fill-divider me-4 min-w-[40px] shrink-0 border-e pe-4 text-end select-none" aria-hidden="true"><div>1</div><div>2</div><div>3</div><div>4</div><div>5</div><div>6</div><div>7</div><div>8</div><div>9</div><div>10</div><div>11</div><div>12</div><div>13</div><div>14</div><div>15</div><div>16</div><div>17</div><div>18</div><div>19</div><div>20</div><div>21</div><div>22</div><div>23</div><div>24</div><div>25</div><div>26</div><div>27</div><div>28</div><div>29</div><div>30</div><div>31</div><div>32</div><div>33</div><div>34</div><div>35</div><div>36</div><div>37</div><div>38</div><div>39</div><div>40</div><div>41</div><div>42</div><div>43</div><div>44</div><div>45</div><div>46</div><div>47</div><div>48</div><div>49</div><div>50</div><div>51</div><div>52</div><div>53</div><div>54</div><div>55</div><div>56</div><div>57</div><div>58</div><div>59</div><div>60</div><div>61</div><div>62</div><div>63</div><div>64</div><div>65</div><div>66</div><div>67</div><div>68</div><div>69</div><div>70</div><div>71</div><div>72</div><div>73</div><div>74</div><div>75</div><div>76</div><div>77</div><div>78</div><div>79</div><div>80</div><div>81</div><div>82</div><div>83</div><div>84</div><div>85</div><div>86</div><div>87</div><div>88</div><div>89</div><div>90</div><div>91</div><div>92</div><div>93</div><div>94</div><div>95</div><div>96</div><div>97</div><div>98</div><div>99</div><div>100</div><div>101</div><div>102</div><div>103</div><div>104</div><div>105</div><div>106</div><div>107</div><div>108</div><div>109</div><div>110</div><div>111</div><div>112</div><div>113</div><div>114</div><div>115</div><div>116</div><div>117</div><div>118</div><div>119</div><div>120</div><div>121</div><div>122</div><div>123</div><div>124</div><div>125</div><div>126</div><div>127</div><div>128</div><div>129</div><div>130</div><div>131</div><div>132</div><div>133</div><div>134</div><div>135</div><div>136</div><div>137</div><div>138</div><div>139</div><div>140</div><div>141</div><div>142</div><div>143</div><div>144</div><div>145</div><div>146</div><div>147</div><div>148</div><div>149</div><div>150</div><div>151</div><div>152</div><div>153</div><div>154</div><div>155</div><div>156</div><div>157</div><div>158</div><div>159</div><div>160</div><div>161</div><div>162</div><div>163</div><div>164</div><div>165</div><div>166</div><div>167</div><div>168</div><div>169</div><div>170</div><div>171</div><div>172</div><div>173</div><div>174</div><div>175</div></div><code class="block min-w-0 flex-1 overflow-x-auto whitespace-pre"><pre class="shiki shiki-themes github-light github-dark" style="--shiki-light:#24292e;--shiki-dark:#e1e4e8;--shiki-light-bg:#fff;--shiki-dark-bg:#24292e" tabindex="0"><code><span class="line"><span style="--shiki-light:#6A737D;--shiki-dark:#6A737D">// Google Drive Sync - Omar Workspace - Final Clean Version</span></span>
+<span class="line"><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">const</span><span style="--shiki-light:#005CC5;--shiki-dark:#79B8FF"> GDRIVE_CONFIG</span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583"> =</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8"> {</span></span>
+<span class="line"><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">  clientId: </span><span style="--shiki-light:#032F62;--shiki-dark:#9ECBFF">"430114765758-pcre3l9eegi2iuhk3761k2t5irafs30o.apps.googleusercontent.com"</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">,</span></span>
+<span class="line"><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">  fileName: </span><span style="--shiki-light:#032F62;--shiki-dark:#9ECBFF">"OmarWorkspace.json"</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">,</span></span>
+<span class="line"><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">  keys: [</span><span style="--shiki-light:#032F62;--shiki-dark:#9ECBFF">'omar_tx_v3'</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">,</span><span style="--shiki-light:#032F62;--shiki-dark:#9ECBFF">'omar_master_bands'</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">,</span><span style="--shiki-light:#032F62;--shiki-dark:#9ECBFF">'omar_wallets_v3'</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">,</span><span style="--shiki-light:#032F62;--shiki-dark:#9ECBFF">'att_fixed_final'</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">,</span><span style="--shiki-light:#032F62;--shiki-dark:#9ECBFF">'att_hols_fixed'</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">,</span><span style="--shiki-light:#032F62;--shiki-dark:#9ECBFF">'att_notes'</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">,</span><span style="--shiki-light:#032F62;--shiki-dark:#9ECBFF">'attendance_log'</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">,</span><span style="--shiki-light:#032F62;--shiki-dark:#9ECBFF">'tasks_v6'</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">,</span><span style="--shiki-light:#032F62;--shiki-dark:#9ECBFF">'debts_pro_v2'</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">,</span><span style="--shiki-light:#032F62;--shiki-dark:#9ECBFF">'omar_important'</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">,</span><span style="--shiki-light:#032F62;--shiki-dark:#9ECBFF">'omar_theme'</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">,</span><span style="--shiki-light:#032F62;--shiki-dark:#9ECBFF">'theme'</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">,</span><span style="--shiki-light:#032F62;--shiki-dark:#9ECBFF">'att_settings'</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">,</span><span style="--shiki-light:#032F62;--shiki-dark:#9ECBFF">'att_active_month'</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">,</span><span style="--shiki-light:#032F62;--shiki-dark:#9ECBFF">'att_closed'</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">]</span></span>
+<span class="line"><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">};</span></span>
+<span class="line"></span>
+<span class="line"><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">let</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8"> tokenClient </span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">=</span><span style="--shiki-light:#005CC5;--shiki-dark:#79B8FF"> null</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">;</span></span>
+<span class="line"><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">let</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8"> accessToken </span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">=</span><span style="--shiki-light:#005CC5;--shiki-dark:#79B8FF"> null</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">;</span></span>
+<span class="line"><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">let</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8"> gapiInited </span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">=</span><span style="--shiki-light:#005CC5;--shiki-dark:#79B8FF"> false</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">;</span></span>
+<span class="line"><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">let</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8"> gisInited </span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">=</span><span style="--shiki-light:#005CC5;--shiki-dark:#79B8FF"> false</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">;</span></span>
+<span class="line"><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">let</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8"> fileId </span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">=</span><span style="--shiki-light:#005CC5;--shiki-dark:#79B8FF"> null</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">;</span></span>
+<span class="line"><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">let</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8"> pushTimer </span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">=</span><span style="--shiki-light:#005CC5;--shiki-dark:#79B8FF"> null</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">;</span></span>
+<span class="line"></span>
+<span class="line"><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">function</span><span style="--shiki-light:#6F42C1;--shiki-dark:#B392F0"> loadGapi</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">(){</span></span>
+<span class="line"><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">  return</span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583"> new</span><span style="--shiki-light:#005CC5;--shiki-dark:#79B8FF"> Promise</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">((</span><span style="--shiki-light:#E36209;--shiki-dark:#FFAB70">res</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">,</span><span style="--shiki-light:#E36209;--shiki-dark:#FFAB70">rej</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">)</span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">=></span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">{</span></span>
+<span class="line"><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">    if</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">(window.gapi) </span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">return</span><span style="--shiki-light:#6F42C1;--shiki-dark:#B392F0"> res</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">();</span></span>
+<span class="line"><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">    const</span><span style="--shiki-light:#005CC5;--shiki-dark:#79B8FF"> s</span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">=</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">document.</span><span style="--shiki-light:#6F42C1;--shiki-dark:#B392F0">createElement</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">(</span><span style="--shiki-light:#032F62;--shiki-dark:#9ECBFF">'script'</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">);</span></span>
+<span class="line"><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">    s.src</span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">=</span><span style="--shiki-light:#032F62;--shiki-dark:#9ECBFF">"https://apis.google.com/js/api.js"</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">;</span></span>
+<span class="line"><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">    s.</span><span style="--shiki-light:#6F42C1;--shiki-dark:#B392F0">onload</span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">=</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">()</span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">=></span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">{ gapi.</span><span style="--shiki-light:#6F42C1;--shiki-dark:#B392F0">load</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">(</span><span style="--shiki-light:#032F62;--shiki-dark:#9ECBFF">'client'</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">, </span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">async</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8"> ()</span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">=></span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">{</span></span>
+<span class="line"><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">      await</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8"> gapi.client.</span><span style="--shiki-light:#6F42C1;--shiki-dark:#B392F0">init</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">({ discoveryDocs:[</span><span style="--shiki-light:#032F62;--shiki-dark:#9ECBFF">"https://www.googleapis.com/discovery/v1/apis/drive/v3/rest"</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">] });</span></span>
+<span class="line"><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">      gapiInited</span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">=</span><span style="--shiki-light:#005CC5;--shiki-dark:#79B8FF">true</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">; </span><span style="--shiki-light:#6F42C1;--shiki-dark:#B392F0">res</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">();</span></span>
+<span class="line"><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">    });};</span></span>
+<span class="line"><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">    s.onerror</span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">=</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">rej;</span></span>
+<span class="line"><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">    document.head.</span><span style="--shiki-light:#6F42C1;--shiki-dark:#B392F0">appendChild</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">(s);</span></span>
+<span class="line"><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">  });</span></span>
+<span class="line"><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">}</span></span>
+<span class="line"></span>
+<span class="line"><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">function</span><span style="--shiki-light:#6F42C1;--shiki-dark:#B392F0"> loadGis</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">(){</span></span>
+<span class="line"><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">  return</span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583"> new</span><span style="--shiki-light:#005CC5;--shiki-dark:#79B8FF"> Promise</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">((</span><span style="--shiki-light:#E36209;--shiki-dark:#FFAB70">res</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">,</span><span style="--shiki-light:#E36209;--shiki-dark:#FFAB70">rej</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">)</span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">=></span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">{</span></span>
+<span class="line"><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">    if</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">(window.google?.accounts) </span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">return</span><span style="--shiki-light:#6F42C1;--shiki-dark:#B392F0"> res</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">();</span></span>
+<span class="line"><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">    const</span><span style="--shiki-light:#005CC5;--shiki-dark:#79B8FF"> s</span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">=</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">document.</span><span style="--shiki-light:#6F42C1;--shiki-dark:#B392F0">createElement</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">(</span><span style="--shiki-light:#032F62;--shiki-dark:#9ECBFF">'script'</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">);</span></span>
+<span class="line"><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">    s.src</span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">=</span><span style="--shiki-light:#032F62;--shiki-dark:#9ECBFF">"https://accounts.google.com/gsi/client"</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">;</span></span>
+<span class="line"><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">    s.</span><span style="--shiki-light:#6F42C1;--shiki-dark:#B392F0">onload</span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">=</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">()</span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">=></span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">{ gisInited</span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">=</span><span style="--shiki-light:#005CC5;--shiki-dark:#79B8FF">true</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">; </span><span style="--shiki-light:#6F42C1;--shiki-dark:#B392F0">res</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">(); };</span></span>
+<span class="line"><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">    s.onerror</span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">=</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">rej;</span></span>
+<span class="line"><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">    document.head.</span><span style="--shiki-light:#6F42C1;--shiki-dark:#B392F0">appendChild</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">(s);</span></span>
+<span class="line"><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">  });</span></span>
+<span class="line"><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">}</span></span>
+<span class="line"></span>
+<span class="line"><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">async</span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583"> function</span><span style="--shiki-light:#6F42C1;--shiki-dark:#B392F0"> initGoogleDrive</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">(){</span></span>
+<span class="line"><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">  if</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">(</span><span style="--shiki-light:#005CC5;--shiki-dark:#79B8FF">GDRIVE_CONFIG</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">.clientId.</span><span style="--shiki-light:#6F42C1;--shiki-dark:#B392F0">includes</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">(</span><span style="--shiki-light:#032F62;--shiki-dark:#9ECBFF">'YOUR_GOOGLE'</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">)){</span></span>
+<span class="line"><span style="--shiki-light:#6F42C1;--shiki-dark:#B392F0">    updateUIStatus</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">(</span><span style="--shiki-light:#032F62;--shiki-dark:#9ECBFF">'not-configured'</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">); </span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">return</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">;</span></span>
+<span class="line"><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">  }</span></span>
+<span class="line"><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">  await</span><span style="--shiki-light:#005CC5;--shiki-dark:#79B8FF"> Promise</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">.</span><span style="--shiki-light:#6F42C1;--shiki-dark:#B392F0">all</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">([</span><span style="--shiki-light:#6F42C1;--shiki-dark:#B392F0">loadGapi</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">(), </span><span style="--shiki-light:#6F42C1;--shiki-dark:#B392F0">loadGis</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">()]);</span></span>
+<span class="line"><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">  tokenClient </span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">=</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8"> google.accounts.oauth2.</span><span style="--shiki-light:#6F42C1;--shiki-dark:#B392F0">initTokenClient</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">({</span></span>
+<span class="line"><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">    client_id: </span><span style="--shiki-light:#005CC5;--shiki-dark:#79B8FF">GDRIVE_CONFIG</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">.clientId,</span></span>
+<span class="line"><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">    scope: </span><span style="--shiki-light:#032F62;--shiki-dark:#9ECBFF">"https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.appdata https://www.googleapis.com/auth/drive.readonly"</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">,</span></span>
+<span class="line"><span style="--shiki-light:#6F42C1;--shiki-dark:#B392F0">    callback</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">: </span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">async</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8"> (</span><span style="--shiki-light:#E36209;--shiki-dark:#FFAB70">resp</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">)</span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">=></span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">{</span></span>
+<span class="line"><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">      if</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">(resp.error){ console.</span><span style="--shiki-light:#6F42C1;--shiki-dark:#B392F0">error</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">(resp); </span><span style="--shiki-light:#6F42C1;--shiki-dark:#B392F0">updateUIStatus</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">(</span><span style="--shiki-light:#032F62;--shiki-dark:#9ECBFF">'disconnected'</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">); </span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">return</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">; }</span></span>
+<span class="line"><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">      accessToken </span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">=</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8"> resp.access_token;</span></span>
+<span class="line"><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">      gapi.client.</span><span style="--shiki-light:#6F42C1;--shiki-dark:#B392F0">setToken</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">({access_token: accessToken});</span></span>
+<span class="line"><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">      localStorage.</span><span style="--shiki-light:#6F42C1;--shiki-dark:#B392F0">setItem</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">(</span><span style="--shiki-light:#032F62;--shiki-dark:#9ECBFF">'_gdrive_token'</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">, accessToken);</span></span>
+<span class="line"><span style="--shiki-light:#6F42C1;--shiki-dark:#B392F0">      updateUIStatus</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">(</span><span style="--shiki-light:#032F62;--shiki-dark:#9ECBFF">'connected'</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">);</span></span>
+<span class="line"><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">      document.</span><span style="--shiki-light:#6F42C1;--shiki-dark:#B392F0">dispatchEvent</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">(</span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">new</span><span style="--shiki-light:#6F42C1;--shiki-dark:#B392F0"> CustomEvent</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">(</span><span style="--shiki-light:#032F62;--shiki-dark:#9ECBFF">'gdrive-ready'</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">));</span></span>
+<span class="line"><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">      await</span><span style="--shiki-light:#6F42C1;--shiki-dark:#B392F0"> pullFromDrive</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">();</span></span>
+<span class="line"><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">    }</span></span>
+<span class="line"><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">  });</span></span>
+<span class="line"><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">  const</span><span style="--shiki-light:#005CC5;--shiki-dark:#79B8FF"> saved</span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583"> =</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8"> localStorage.</span><span style="--shiki-light:#6F42C1;--shiki-dark:#B392F0">getItem</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">(</span><span style="--shiki-light:#032F62;--shiki-dark:#9ECBFF">'_gdrive_token'</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">);</span></span>
+<span class="line"><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">  if</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">(saved){</span></span>
+<span class="line"><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">    accessToken </span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">=</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8"> saved;</span></span>
+<span class="line"><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">    gapi.client.</span><span style="--shiki-light:#6F42C1;--shiki-dark:#B392F0">setToken</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">({access_token: saved});</span></span>
+<span class="line"><span style="--shiki-light:#6F42C1;--shiki-dark:#B392F0">    updateUIStatus</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">(</span><span style="--shiki-light:#032F62;--shiki-dark:#9ECBFF">'connected'</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">);</span></span>
+<span class="line"><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">    try</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">{ </span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">await</span><span style="--shiki-light:#6F42C1;--shiki-dark:#B392F0"> pullFromDrive</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">(); }</span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">catch</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">(e){ </span><span style="--shiki-light:#6F42C1;--shiki-dark:#B392F0">updateUIStatus</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">(</span><span style="--shiki-light:#032F62;--shiki-dark:#9ECBFF">'disconnected'</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">); }</span></span>
+<span class="line"><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">  } </span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">else</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8"> {</span></span>
+<span class="line"><span style="--shiki-light:#6F42C1;--shiki-dark:#B392F0">    updateUIStatus</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">(</span><span style="--shiki-light:#032F62;--shiki-dark:#9ECBFF">'disconnected'</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">);</span></span>
+<span class="line"><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">  }</span></span>
+<span class="line"><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">}</span></span>
+<span class="line"></span>
+<span class="line"><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">function</span><span style="--shiki-light:#6F42C1;--shiki-dark:#B392F0"> signInGoogle</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">(){</span></span>
+<span class="line"><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">  if</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">(</span><span style="--shiki-light:#005CC5;--shiki-dark:#79B8FF">GDRIVE_CONFIG</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">.clientId.</span><span style="--shiki-light:#6F42C1;--shiki-dark:#B392F0">includes</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">(</span><span style="--shiki-light:#032F62;--shiki-dark:#9ECBFF">'YOUR_GOOGLE'</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">)){</span></span>
+<span class="line"><span style="--shiki-light:#6F42C1;--shiki-dark:#B392F0">    alert</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">(</span><span style="--shiki-light:#032F62;--shiki-dark:#9ECBFF">'لازم تحط Google Client ID في Google Cloud Console</span><span style="--shiki-light:#005CC5;--shiki-dark:#79B8FF">\n</span><span style="--shiki-light:#032F62;--shiki-dark:#9ECBFF">اعمل OAuth Client ID</span><span style="--shiki-light:#005CC5;--shiki-dark:#79B8FF">\n</span><span style="--shiki-light:#032F62;--shiki-dark:#9ECBFF">وحطه في READMEE'</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">);</span></span>
+<span class="line"><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">    return</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">;</span></span>
+<span class="line"><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">  }</span></span>
+<span class="line"><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">  if</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">(</span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">!</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">tokenClient){ </span><span style="--shiki-light:#6F42C1;--shiki-dark:#B392F0">initGoogleDrive</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">().</span><span style="--shiki-light:#6F42C1;--shiki-dark:#B392F0">then</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">(()</span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">=></span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8"> tokenClient.</span><span style="--shiki-light:#6F42C1;--shiki-dark:#B392F0">requestAccessToken</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">({prompt: </span><span style="--shiki-light:#032F62;--shiki-dark:#9ECBFF">'consent'</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">})); </span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">return</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">; }</span></span>
+<span class="line"><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">  tokenClient.</span><span style="--shiki-light:#6F42C1;--shiki-dark:#B392F0">requestAccessToken</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">({prompt: </span><span style="--shiki-light:#032F62;--shiki-dark:#9ECBFF">'consent'</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">});</span></span>
+<span class="line"><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">}</span></span>
+<span class="line"></span>
+<span class="line"><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">function</span><span style="--shiki-light:#6F42C1;--shiki-dark:#B392F0"> signOutGoogle</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">(){</span></span>
+<span class="line"><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">  if</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">(accessToken){</span></span>
+<span class="line"><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">    try</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">{ google.accounts.oauth2.</span><span style="--shiki-light:#6F42C1;--shiki-dark:#B392F0">revoke</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">(accessToken); }</span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">catch</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">(e){}</span></span>
+<span class="line"><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">    accessToken</span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">=</span><span style="--shiki-light:#005CC5;--shiki-dark:#79B8FF">null</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">; fileId</span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">=</span><span style="--shiki-light:#005CC5;--shiki-dark:#79B8FF">null</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">;</span></span>
+<span class="line"><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">    localStorage.</span><span style="--shiki-light:#6F42C1;--shiki-dark:#B392F0">removeItem</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">(</span><span style="--shiki-light:#032F62;--shiki-dark:#9ECBFF">'_gdrive_token'</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">);</span></span>
+<span class="line"><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">    gapi.client.</span><span style="--shiki-light:#6F42C1;--shiki-dark:#B392F0">setToken</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">(</span><span style="--shiki-light:#005CC5;--shiki-dark:#79B8FF">null</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">);</span></span>
+<span class="line"><span style="--shiki-light:#6F42C1;--shiki-dark:#B392F0">    updateUIStatus</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">(</span><span style="--shiki-light:#032F62;--shiki-dark:#9ECBFF">'disconnected'</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">);</span></span>
+<span class="line"><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">  }</span></span>
+<span class="line"><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">}</span></span>
+<span class="line"></span>
+<span class="line"><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">function</span><span style="--shiki-light:#6F42C1;--shiki-dark:#B392F0"> updateUIStatus</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">(</span><span style="--shiki-light:#E36209;--shiki-dark:#FFAB70">state</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">){</span></span>
+<span class="line"><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">  const</span><span style="--shiki-light:#005CC5;--shiki-dark:#79B8FF"> el</span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">=</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">document.</span><span style="--shiki-light:#6F42C1;--shiki-dark:#B392F0">getElementById</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">(</span><span style="--shiki-light:#032F62;--shiki-dark:#9ECBFF">'gdrive-status'</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">) </span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">||</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8"> document.</span><span style="--shiki-light:#6F42C1;--shiki-dark:#B392F0">getElementById</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">(</span><span style="--shiki-light:#032F62;--shiki-dark:#9ECBFF">'onedrive-status'</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">);</span></span>
+<span class="line"><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">  if</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">(</span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">!</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">el) </span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">return</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">;</span></span>
+<span class="line"><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">  if</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">(state</span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">===</span><span style="--shiki-light:#032F62;--shiki-dark:#9ECBFF">'connected'</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">){</span></span>
+<span class="line"><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">    el.innerHTML </span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">=</span><span style="--shiki-light:#032F62;--shiki-dark:#9ECBFF"> '☁️ مربوط بـ Gmail Drive ✅ - الداتا في Drive'</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">;</span></span>
+<span class="line"><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">    el.style.background</span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">=</span><span style="--shiki-light:#032F62;--shiki-dark:#9ECBFF">'#DCFCE7'</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">; el.style.color</span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">=</span><span style="--shiki-light:#032F62;--shiki-dark:#9ECBFF">'#14532D'</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">;</span></span>
+<span class="line"><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">    el.onclick</span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">=</span><span style="--shiki-light:#005CC5;--shiki-dark:#79B8FF">null</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">;</span></span>
+<span class="line"><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">  } </span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">else</span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583"> if</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">(state</span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">===</span><span style="--shiki-light:#032F62;--shiki-dark:#9ECBFF">'disconnected'</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">){</span></span>
+<span class="line"><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">    el.innerHTML </span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">=</span><span style="--shiki-light:#032F62;--shiki-dark:#9ECBFF"> '⚠️ مش مربوط - اضغط لربط Google Drive'</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">;</span></span>
+<span class="line"><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">    el.style.background</span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">=</span><span style="--shiki-light:#032F62;--shiki-dark:#9ECBFF">'#FEF3C7'</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">; el.style.color</span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">=</span><span style="--shiki-light:#032F62;--shiki-dark:#9ECBFF">'#92400E'</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">;</span></span>
+<span class="line"><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">    el.onclick</span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">=</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">signInGoogle;</span></span>
+<span class="line"><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">  } </span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">else</span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583"> if</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">(state</span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">===</span><span style="--shiki-light:#032F62;--shiki-dark:#9ECBFF">'not-configured'</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">){</span></span>
+<span class="line"><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">    el.innerHTML </span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">=</span><span style="--shiki-light:#032F62;--shiki-dark:#9ECBFF"> '⚙️ ضع Google Client ID في google-drive.js'</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">;</span></span>
+<span class="line"><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">    el.style.background</span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">=</span><span style="--shiki-light:#032F62;--shiki-dark:#9ECBFF">'#FEE2E2'</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">; el.style.color</span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">=</span><span style="--shiki-light:#032F62;--shiki-dark:#9ECBFF">'#991B1B'</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">;</span></span>
+<span class="line"><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">  }</span></span>
+<span class="line"><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">}</span></span>
+<span class="line"></span>
+<span class="line"><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">async</span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583"> function</span><span style="--shiki-light:#6F42C1;--shiki-dark:#B392F0"> pushToDrive</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">(){</span></span>
+<span class="line"><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">  if</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">(</span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">!</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">accessToken){ console.</span><span style="--shiki-light:#6F42C1;--shiki-dark:#B392F0">log</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">(</span><span style="--shiki-light:#032F62;--shiki-dark:#9ECBFF">'no token'</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">); </span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">return</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">; }</span></span>
+<span class="line"><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">  const</span><span style="--shiki-light:#005CC5;--shiki-dark:#79B8FF"> payload</span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">=</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">{};</span></span>
+<span class="line"><span style="--shiki-light:#005CC5;--shiki-dark:#79B8FF">  GDRIVE_CONFIG</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">.keys.</span><span style="--shiki-light:#6F42C1;--shiki-dark:#B392F0">forEach</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">(</span><span style="--shiki-light:#E36209;--shiki-dark:#FFAB70">k</span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">=></span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">{ payload[k]</span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">=</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">localStorage.</span><span style="--shiki-light:#6F42C1;--shiki-dark:#B392F0">getItem</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">(k); });</span></span>
+<span class="line"><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">  payload._lastSync </span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">=</span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583"> new</span><span style="--shiki-light:#6F42C1;--shiki-dark:#B392F0"> Date</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">().</span><span style="--shiki-light:#6F42C1;--shiki-dark:#B392F0">toISOString</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">();</span></span>
+<span class="line"><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">  payload._version </span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">=</span><span style="--shiki-light:#005CC5;--shiki-dark:#79B8FF"> 3</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">;</span></span>
+<span class="line"><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">  const</span><span style="--shiki-light:#005CC5;--shiki-dark:#79B8FF"> fileContent</span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583"> =</span><span style="--shiki-light:#005CC5;--shiki-dark:#79B8FF"> JSON</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">.</span><span style="--shiki-light:#6F42C1;--shiki-dark:#B392F0">stringify</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">(payload);</span></span>
+<span class="line"><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">  const</span><span style="--shiki-light:#005CC5;--shiki-dark:#79B8FF"> blob</span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583"> =</span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583"> new</span><span style="--shiki-light:#6F42C1;--shiki-dark:#B392F0"> Blob</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">([fileContent], {type:</span><span style="--shiki-light:#032F62;--shiki-dark:#9ECBFF">'application/json'</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">});</span></span>
+<span class="line"><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">  try</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">{</span></span>
+<span class="line"><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">    if</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">(</span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">!</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">fileId){</span></span>
+<span class="line"><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">      const</span><span style="--shiki-light:#005CC5;--shiki-dark:#79B8FF"> list</span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583"> =</span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583"> await</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8"> gapi.client.drive.files.</span><span style="--shiki-light:#6F42C1;--shiki-dark:#B392F0">list</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">({ spaces:</span><span style="--shiki-light:#032F62;--shiki-dark:#9ECBFF">'appDataFolder'</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">, q: </span><span style="--shiki-light:#032F62;--shiki-dark:#9ECBFF">`name='${</span><span style="--shiki-light:#005CC5;--shiki-dark:#79B8FF">GDRIVE_CONFIG</span><span style="--shiki-light:#032F62;--shiki-dark:#9ECBFF">.</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">fileName</span><span style="--shiki-light:#032F62;--shiki-dark:#9ECBFF">}'`</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">, fields:</span><span style="--shiki-light:#032F62;--shiki-dark:#9ECBFF">'files(id,name)'</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8"> });</span></span>
+<span class="line"><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">      if</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">(list.result.files.</span><span style="--shiki-light:#005CC5;--shiki-dark:#79B8FF">length</span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">></span><span style="--shiki-light:#005CC5;--shiki-dark:#79B8FF">0</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">) fileId </span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">=</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8"> list.result.files[</span><span style="--shiki-light:#005CC5;--shiki-dark:#79B8FF">0</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">].id;</span></span>
+<span class="line"><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">    }</span></span>
+<span class="line"><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">    if</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">(fileId){</span></span>
+<span class="line"><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">      await</span><span style="--shiki-light:#6F42C1;--shiki-dark:#B392F0"> fetch</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">(</span><span style="--shiki-light:#032F62;--shiki-dark:#9ECBFF">`https://www.googleapis.com/upload/drive/v3/files/${</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">fileId</span><span style="--shiki-light:#032F62;--shiki-dark:#9ECBFF">}?uploadType=media`</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">, {</span></span>
+<span class="line"><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">        method:</span><span style="--shiki-light:#032F62;--shiki-dark:#9ECBFF">'PATCH'</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">,</span></span>
+<span class="line"><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">        headers:{</span><span style="--shiki-light:#032F62;--shiki-dark:#9ECBFF">'Authorization'</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">:</span><span style="--shiki-light:#032F62;--shiki-dark:#9ECBFF">'Bearer '</span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">+</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">accessToken},</span></span>
+<span class="line"><span style="--shiki-light:
