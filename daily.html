@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>اليومية - مربوط بـ Gmail Drive</title>
+<script src="themes.js"></script><script src="google-drive.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@700;800;900&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;font-family:'Tajawal',sans-serif}
+html,body{overflow-x:hidden;max-width:100vw;background:var(--bg);color:var(--text);transition:.3s}
+body{padding-bottom:94px}
+.app{max-width:780px;margin:0 auto;padding:8px}
+.top{position:sticky;top:0;z-index:20;background:var(--card);border:1.5px solid var(--card-border);border-radius:13px;padding:10px 12px;display:flex;justify-content:space-between;align-items:center}
+.main-tabs{display:flex;gap:4px;background:var(--card);padding:5px;border-radius:12px;border:1.5px solid var(--card-border);margin:8px 0;overflow:auto}
+.mtab{flex:1;white-space:nowrap;border:none;padding:9px 5px;border-radius:9px;font-weight:900;font-size:11px;cursor:pointer;background:transparent;color:var(--text-soft)}
+.mtab.active{background:var(--hero);color:#fff}
+.fbar{background:var(--card);border:1.5px solid var(--card-border);border-radius:11px;padding:7px;margin-bottom:7px;display:flex;gap:5px;align-items:center;overflow-x:auto}
+.fbar input,.fbar select{width:87px;padding:6px;border:1px solid var(--card-border);border-radius:8px;font-size:8.5px;background:var(--bg-soft)}
+.tsec{background:var(--card);border:1.5px solid var(--card-border);border-radius:12px;overflow:hidden;margin-bottom:8px}
+.thead{padding:8px 10px;display:flex;justify-content:space-between;align-items:center;background:var(--bg-soft);border-bottom:1.5px solid var(--card-border)}
+.twrap{overflow:auto}
+table{width:100%;border-collapse:collapse;min-width:320px}
+th{background:var(--bg-soft);padding:7px 3px;font-size:8.5px;color:var(--text-soft);text-align:center;position:sticky;top:0}
+td{padding:7px 3px;text-align:center;font-weight:800;font-size:9.3px;color:var(--text);border-bottom:1px solid var(--bg-soft)}
+.total-header{background:var(--hero);color:#fff;padding:9px 10px;border-radius:10px;margin:10px 0 7px 0;display:flex;justify-content:space-between;font-weight:900;font-size:10.2px}
+.add-row-btn{background:var(--card);color:var(--hero);border:none;padding:5px 8px;border-radius:7px;font-size:9.3px;font-weight:900;cursor:pointer}
+.fab{position:fixed;bottom:14px;left:50%;transform:translateX(-50%);width:51px;height:51px;border-radius:50%;background:var(--hero);color:#fff;border:none;font-size:27px;z-index:50;display:flex;align-items:center;justify-content:center}
+.modal{display:none;position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:100;backdrop-filter:blur(6px);align-items:flex-end;justify-content:center}
+.modal.open{display:flex}
+.card{background:var(--card);width:100%;border-radius:17px 17px 0 0;padding:8px 8px 12px 8px;max-height:75vh;overflow-y:auto}
+.card-top-tabs{display:flex;gap:3px;background:var(--bg-soft);padding:4px;border-radius:10px;margin-bottom:7px}
+.card-ttab{flex:1;border:none;padding:8px 5px;border-radius:8px;font-weight:900;font-size:9.3px;cursor:pointer;background:transparent;color:var(--text-soft)}
+.card-ttab.active{background:var(--hero);color:#fff}
+.group{background:var(--bg-soft);border:1px solid var(--card-border);border-radius:9px;padding:6px 8px;margin:4px 0;display:flex;gap:4px;align-items:center}
+.group label{font-size:7.5px;font-weight:800;color:var(--text-soft);min-width:28px}
+.group input,.group select{flex:1;padding:7px 6px;border:1px solid var(--card-border);border-radius:7px;font-weight:700;font-size:11px;background:var(--card);color:var(--text)}
+</style>
+</head>
+<body>
+<div class="app">
+<div class="top"><h3 style="font-weight:900;font-size:11px">اليومية ☁️ مربوطة بالجيميل</h3><div id="today" style="font-size:8.5px;background:var(--hero);color:#fff;padding:3px 7px;border-radius:20px"></div></div>
+<div class="main-tabs">
+<button class="mtab active" data-t="expense" onclick="switchTab('expense')">مصروف</button>
+<button class="mtab" data-t="income" onclick="switchTab('income')">دخل</button>
+<button class="mtab" data-t="debt" onclick="switchTab('debt')">ديون</button>
+<button class="mtab" data-t="amanat" onclick="switchTab('amanat')">أمانات</button>
+<button class="mtab" data-t="total" onclick="switchTab('total')">الإجمالي</button>
+</div>
+<div id="p-expense"><div id="t-expense"></div></div>
+<div id="p-income" style="display:none"><div id="t-income"></div></div>
+<div id="p-debt" style="display:none"><div style="display:flex;gap:3px;background:var(--bg-soft);padding:3px;border-radius:8px;margin:4px 0"><button id="sdue" style="flex:1;border:none;padding:6px;border-radius:6px;font-weight:900;font-size:9.3px;background:var(--card);border:1px solid var(--card-border)" onclick="setDebtSub('due')">مستحق</button><button id="sdef" style="flex:1;border:none;padding:6px;border-radius:6px;font-weight:900;font-size:9.3px;background:transparent" onclick="setDebtSub('def')">مؤجل</button></div><div id="debt-due"></div><div id="debt-def" style="display:none"></div></div>
+<div id="p-amanat" style="display:none"><div id="t-amanat"></div></div>
+<div id="p-total" style="display:none"><div id="t-total"></div></div>
+</div>
+<button class="fab" onclick="openAdd()">+</button>
+<div class="modal" id="addModal" onclick="if(event.target==this)closeAdd()"><div class="card">
+<div class="card-top-tabs">
+<button class="card-ttab active" id="ct-expense" onclick="switchCardTab('expense')">مصروف</button>
+<button class="card-ttab" id="ct-income" onclick="switchCardTab('income')">دخل</button>
+<button class="card-ttab" id="ct-debt" onclick="switchCardTab('debt')">ديون</button>
+<button class="card-ttab" id="ct-amanat" onclick="switchCardTab('amanat')">أمانات</button>
+</div>
+<div id="form-expense">
+<div class="group" style="background:var(--hero);border-color:var(--hero)"><label style="color:#fff">قيمة</label><input id="a-amount" type="number" placeholder="0"></div>
+<div class="group"><label>محفظة</label><select id="a-wallet"></select></div>
+<div class="group"><label>بند</label><select id="a-item"></select></div>
+<div class="group"><label>تاريخ</label><input id="a-date" type="date"></div>
+</div>
+<div id="form-debt" style="display:none">
+<div class="group" style="background:var(--hero);border-color:var(--hero)"><label style="color:#fff">قيمة</label><input id="a-amount-debt" type="number" placeholder="0"></div>
+<div class="group"><label>شخص</label><select id="a-person-debt"></select></div>
+<div class="group"><label>نوع</label><select id="a-status"><option value="due">مستحق</option><option value="def">مؤجل</option></select><select id="a-direction"><option value="عليا">عليا</option><option value="ليا">ليا</option></select></div>
+</div>
+<div id="form-amanat" style="display:none">
+<div class="group" style="background:var(--hero);border-color:var(--hero)"><label style="color:#fff">قيمة</label><input id="a-amount-ama" type="number" placeholder="0"></div>
+<div class="group"><label>شخص</label><select id="a-person-ama"></select></div>
+</div>
+<div style="display:flex;gap:5px;margin-top:7px">
+<button onclick="closeAdd()" style="flex:1;padding:8px;background:var(--bg-soft);border:1px solid var(--card-border);border-radius:8px;font-weight:800;font-size:9.3px">إلغاء</button>
+<button onclick="saveTx()" style="flex:1;padding:8px;background:var(--hero);color:#fff;border:none;border-radius:8px;font-weight:900;font-size:9.3px">حفظ في الجيميل ☁️</button>
+</div>
+</div></div>
+
+<script type="module">
+/* Google Drive only */
+
+let transactions = JSON.parse(localStorage.getItem('omar_tx_v3')||'[]');
+let masterBands = JSON.parse(localStorage.getItem('omar_master_bands')||'[]');
+let wallets = JSON.parse(localStorage.getItem('omar_wallets_v3')||'["كاش","محفظة بنكية","فودافون كاش","الخزنة","الأمانات"]');
+let curTab='expense',curDebtSub='due',editingId=null,cardTab='expense';
+
+document.addEventListener('onedrive-data-updated', ()=>{
+  transactions = JSON.parse(localStorage.getItem('omar_tx_v3')||'[]');
+  renderAll();
+});
+
+
+function persist(){ localStorage.setItem('omar_tx_v3', JSON.stringify(transactions)); localStorage.setItem('omar_master_bands', JSON.stringify(masterBands)); }
+function ensureMaster(){ if(masterBands.length===0){ masterBands=[{id:1,name:'الإيجار',section:'expense'},{id:2,name:'مبيعات',section:'income'}]; } persist(); }
+function getBands(sec){return masterBands.filter(b=>b.section===sec).map(b=>b.name);}
+
+window.switchTab=function(t){curTab=t;document.querySelectorAll('[id^="p-"]').forEach(e=>e.style.display='none');document.getElementById('p-'+t).style.display='block';document.querySelectorAll('.mtab').forEach(b=>b.classList.remove('active'));document.querySelector(`.mtab[data-t="${t}"]`).classList.add('active');renderAll();}
+
+window.setDebtSub=function(s){curDebtSub=s;document.getElementById('debt-due').style.display=s==='due'?'block':'none';document.getElementById('debt-def').style.display=s==='def'?'block':'none';}
+
+window.switchCardTab=function(t){
+  cardTab=t; document.querySelectorAll('.card-ttab').forEach(b=>b.classList.remove('active')); document.getElementById('ct-'+t)?.classList.add('active');
+  document.getElementById('form-expense').style.display=(t==='expense'||t==='income')?'block':'none';
+  document.getElementById('form-debt').style.display=t==='debt'?'block':'none';
+  document.getElementById('form-amanat').style.display=t==='amanat'?'block':'none';
+}
+
+function renderSimple(type){
+  let list=transactions.filter(t=>t.type===type);
+  let html=`<div class="tsec"><div class="thead"><b>${type}</b><span style="background:var(--hero);color:#fff;padding:3px 7px;border-radius:20px;font-size:7.5px">${list.reduce((a,b)=>a+Number(b.amount),0).toLocaleString()}</span></div><div class="twrap"><table><thead><tr><th>تاريخ</th><th>بند</th><th>قيمة</th><th>تحكم</th></tr></thead><tbody>${list.map(t=>`<tr><td>${t.date?.slice(5)}</td><td>${t.item}</td><td>${Number(t.amount).toLocaleString()}</td><td><button onclick="openEdit('${t.id}')">✏️</button> <button onclick="del('${t.id}')">🗑️</button></td></tr>`).join('')}</tbody></table></div></div>`;
+  document.getElementById(type==='expense'?'t-expense':type==='income'?'t-income':'t-amanat').innerHTML=html;
+}
+function renderDebt(){
+  let due=transactions.filter(t=>t.subType==='debt_due'||(t.type==='debt'&&t.status==='due'));
+  let def=transactions.filter(t=>t.subType==='debt_def'||(t.type==='debt'&&t.status==='def'));
+  function build(list){
+    const groups={}; list.forEach(t=>{const k=t.person||t.item; if(!groups[k]) groups[k]=[]; groups[k].push(t);});
+    let h=''; Object.keys(groups).forEach(person=>{
+      const items=groups[person];
+      h+=`<div class="tsec"><div class="thead"><b>${person}</b></div><div class="twrap"><table>${items.map(t=>`<tr><td>${t.date?.slice(5)}</td><td>${t.person}</td><td>${Number(t.amount).toLocaleString()}</td><td><button onclick="del('${t.id}')">🗑️</button></td></tr>`).join('')}</table></div></div>`;
+    }); return h||'لا يوجد';
+  }
+  document.getElementById('debt-due').innerHTML=build(due); document.getElementById('debt-def').innerHTML=build(def);
+}
+function renderTotal(){
+  document.getElementById('t-total').innerHTML=`<div class="tsec"><div class="thead"><b>الإجمالي - مربوط بـ Gmail Drive ☁️</b><span>${transactions.reduce((a,b)=>a+Number(b.amount),0).toLocaleString()}</span></div><div class="twrap"><table>${transactions.map(t=>`<tr><td>${t.type}</td><td>${t.item}</td><td>${t.amount}</td></tr>`).join('')}</table></div></div>`;
+}
+window.renderAll=function(){ if(curTab==='total') renderTotal(); else if(curTab==='debt') renderDebt(); else renderSimple(curTab); }
+
+window.openAdd=function(){ editingId=null; switchCardTab(curTab==='total'?'expense':curTab); document.getElementById('addModal').classList.add('open'); document.getElementById('a-wallet').innerHTML=wallets.map(w=>`<option>${w}</option>`).join(''); document.getElementById('a-item').innerHTML=getBands('expense').map(b=>`<option>${b}</option>`).join(''); }
+window.closeAdd=function(){document.getElementById('addModal').classList.remove('open');}
+window.openEdit=function(id){ editingId=id; const t=transactions.find(x=>x.id===id); document.getElementById('addModal').classList.add('open'); document.getElementById('a-amount').value=t.amount; }
+window.del=async function(id){
+  if(!confirm('مسح؟')) return;
+  transactions=transactions.filter(t=>t.id!==id); persist();
+  if(window.Google Drive) await window.Google Drive.push();
+  renderAll();
+}
+window.saveTx=async function(){
+  const amount=document.getElementById(cardTab==='debt'?'a-amount-debt':cardTab==='amanat'?'a-amount-ama':'a-amount').value;
+  if(!amount) return alert('اكتب القيمة');
+  const payload={id:editingId||Date.now().toString(),type:cardTab,subType:cardTab,item:document.getElementById('a-item')?.value||'عام',person:document.getElementById('a-person-debt')?.value||document.getElementById('a-person-ama')?.value||'عام',amount:Number(amount),date:new Date().toISOString().slice(0,10),wallet:'كاش',direction:document.getElementById('a-direction')?.value||'عليا',status:document.getElementById('a-status')?.value||''};
+  if(editingId){ const idx=transactions.findIndex(t=>t.id===editingId); transactions[idx]=payload; } else transactions.push(payload);
+  persist();
+  if(window.Google Drive){ await window.Google Drive.push(); }
+  closeAdd(); renderAll();
+}
+
+(function init(){ document.getElementById('today').textContent=new Date().toLocaleDateString('ar-EG'); ensureMaster(); renderAll(); })();
+</script>
+</body>
+</html>

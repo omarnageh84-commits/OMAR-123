@@ -1,0 +1,74 @@
+
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#16A34A">
+<link rel="manifest" href="manifest.json">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@500;600;700&display=swap" rel="stylesheet">
+<script src="themes.js"></script>
+<style>
+:root{--bg:#F0FDF4;--card:#fff;--card-border:#BBF7D0;--text:#14532D;--text-soft:#4ADE80;--hero:#16A34A;--nav-bg:rgba(255,255,255,0.9)}
+*{box-sizing:border-box;margin:0;padding:0;font-family:'IBM Plex Sans Arabic',sans-serif}
+body{background:var(--bg);height:100dvh;overflow:hidden}
+.pageWrap{position:absolute;inset:0 0 88px 0;background:var(--bg)}
+.page{position:absolute;inset:0;width:100%;height:100%;border:none;opacity:0;pointer-events:none;transition:opacity.25s;background:var(--bg)}
+.page.active{opacity:1;pointer-events:auto;z-index:2}
+.nav{position:fixed;bottom:14px;left:14px;right:14px;height:70px;background:var(--nav-bg);backdrop-filter:blur(24px);border:1.5px solid var(--card-border);border-radius:22px;display:flex;align-items:center;padding:7px;gap:6px;z-index:100;box-shadow:0 20px 40px -12px rgba(0,0,0,.15)}
+.nav button{flex:1;height:100%;border:none;background:transparent;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;border-radius:15px;color:var(--text-soft);font-size:9.5px;font-weight:700;cursor:pointer}
+.nav button.active{background:var(--hero);color:#fff}
+#installBanner{display:none;position:fixed;top:10px;left:10px;right:10px;background:#14532D;color:#fff;padding:10px 12px;border-radius:12px;z-index:999;justify-content:space-between;align-items:center}
+</style>
+</head>
+<body>
+<div id="installBanner"><span>📲 تثبيت كتطبيق APK؟</span><button id="btnInstall" style="background:#fff;color:#14532D;border:none;padding:6px 10px;border-radius:8px;font-weight:800">تثبيت</button></div>
+
+<div id="gdrive-status" style="position:fixed;top:0;left:0;right:0;z-index:90;text-align:center;padding:6px;font-size:9px;font-weight:800;cursor:pointer">⏳ جاري ربط Google Drive...</div>
+
+<div class="pageWrap" style="top:28px">
+  <iframe data-page="home.html" src="home.html" class="page active" title="home"></iframe>
+  <iframe data-page="daily.html" src="about:blank" class="page" title="daily"></iframe>
+  <iframe data-page="attendance.html" src="about:blank" class="page" title="attendance"></iframe>
+  <iframe data-page="tasks.html" src="about:blank" class="page" title="tasks"></iframe>
+</div>
+
+<nav class="nav">
+  <button class="active" onclick="switchPage('home.html',this)"><span style="font-size:18px">🏠</span><span>الرئيسية</span></button>
+  <button onclick="switchPage('daily.html',this)"><span style="font-size:18px">📊</span><span>اليومية</span></button>
+  <button onclick="switchPage('attendance.html',this)"><span style="font-size:18px">⏱️</span><span>الحضور</span></button>
+  <button onclick="switchPage('tasks.html',this)"><span style="font-size:18px">✓</span><span>المهام</span></button>
+</nav>
+
+<script src="google-drive.js"></script>
+<script>
+// PWA install
+let deferredPrompt=null;
+window.addEventListener('beforeinstallprompt', (e)=>{ e.preventDefault(); deferredPrompt=e; document.getElementById('installBanner').style.display='flex'; });
+document.getElementById('btnInstall').onclick=async()=>{ if(deferredPrompt){ deferredPrompt.prompt(); const r=await deferredPrompt.userChoice; deferredPrompt=null; document.getElementById('installBanner').style.display='none'; } };
+
+// SW register - لازم للـ APK من كروم
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('./sw.js').then(()=>console.log('SW OK - جاهز للـ APK'));
+}
+
+// Navigation
+const frames=document.querySelectorAll('.page');
+function switchPage(name,btn){
+  frames.forEach(f=>{
+    const is=f.dataset.page===name;
+    f.classList.toggle('active',is);
+    if(is && f.src.includes('about:blank')) f.src=name;
+  });
+  document.querySelectorAll('.nav button').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+}
+window.switchPage=switchPage;
+
+// Google Drive status تحديث
+document.addEventListener('onedrive-data-updated', ()=>{
+  frames.forEach(f=>{ try{ if(f.contentWindow && f.contentWindow.renderAll) f.contentWindow.renderAll(); }catch(e){} });
+});
+</script>
+</body>
+</html>

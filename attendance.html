@@ -1,0 +1,64 @@
+<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<script src="themes.js"></script><script src="google-drive.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@700;800;900&family=JetBrains+Mono:wght@700&display=swap" rel="stylesheet">
+<style>
+:root{--hero:#16A34A;--bg:#F0FDF4;--bg-soft:#DCFCE7;--card:#FFFFFF;--card-border:#BBF7D0;--text:#14532D;--text-soft:#16A34A}
+*{box-sizing:border-box;margin:0;padding:0;font-family:'Tajawal',sans-serif}
+html,body{background:var(--bg);color:var(--text)} body{padding:6px;min-height:100dvh}
+.en{font-family:'JetBrains Mono',monospace!important;direction:ltr!important;text-align:center}
+.card{background:var(--card);border:1px solid var(--card-border);border-radius:9px;padding:8px 9px}
+.stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;margin:6px 0}
+.stat{border-radius:9px;padding:7px 3px;border:1px solid var(--card-border);text-align:center;background:var(--card)}
+.time-box{width:92%;border:1px solid var(--card-border);border-radius:7px;padding:6px 2px;text-align:center;font-size:9.7px;background:var(--bg);outline:none;font-weight:800}
+.time-box.filled{background:var(--hero)!important;color:#fff!important}
+.table-wrap{background:var(--card);border:1px solid var(--card-border);border-radius:9px;overflow:hidden}
+.table-head{display:grid;grid-template-columns:1.2fr.8fr.8fr.6fr 1fr.35fr.35fr;background:var(--bg-soft);font-size:7.8px;font-weight:800;padding:7px 3px;text-align:center;border-bottom:1px solid var(--card-border)}
+.row-item{display:grid;grid-template-columns:1.2fr.8fr.8fr.6fr 1fr.35fr.35fr;gap:3px;align-items:center;padding:6px 2px;border-bottom:1px solid var(--bg-soft)}
+</style></head><body>
+<div style="max-width:600px;margin:0 auto">
+<div class="card" style="display:flex;justify-content:space-between;align-items:center"><div style="font-size:9.7px;font-weight:900">⏱️ الحضور ☁️ مربوط بـ Google Drive</div><div id="monthLabel" class="en" style="background:var(--hero);color:#fff;padding:3px 8px;border-radius:999px">8 / 2026</div></div>
+<div class="stats"><div class="stat"><small>ساعات الشهر</small><b id="outTotal" class="en">0</b></div><div class="stat"><small>الصافي</small><b id="outSafi" class="en">0</b></div><div class="stat"><small>سعر الساعة</small><b id="outPrice" class="en">0</b></div></div>
+<div class="table-wrap"><div class="table-head"><div>اليوم</div><div>حضور</div><div>انصراف</div><div>ساعات</div><div>ملاحظة</div><div>إجازة</div><div>مسح</div></div><div id="days"></div></div>
+</div>
+<script type="module">
+/* Google Drive */
+
+let data=JSON.parse(localStorage.getItem('att_fixed_final')||'{}');
+let hols=JSON.parse(localStorage.getItem('att_hols_fixed')||'{}');
+let notes=JSON.parse(localStorage.getItem('att_notes')||'{}');
+let curDate=new Date(); let curY=curDate.getFullYear(), curM=curDate.getMonth();
+document.addEventListener('onedrive-data-updated', ()=>{
+  data=JSON.parse(localStorage.getItem('att_fixed_final')||'{}');
+  hols=JSON.parse(localStorage.getItem('att_hols_fixed')||'{}');
+  notes=JSON.parse(localStorage.getItem('att_notes')||'{}');
+  renderAll();
+});
+
+
+function toEn(s){return String(s).replace(/[٠-٩]/g,d=>'٠١٢٣٤٥٦٧٨٩'.indexOf(d)).replace(/[^0-9.:]/g,'');}
+function parseHour(v){if(!v) return 0;v=toEn(v);if(v.includes(':')){let p=v.split(':');return (parseFloat(p[0])||0)+(parseFloat(p[1])||0)/60;}return parseFloat(v)||0;}
+function calcDiff(a,b){if(!a||!b) return 0;let s=parseHour(a), e=parseHour(b);let d=e-s;if(d<0)d+=24;return d>0?d:0;}
+
+window.renderAll=function(){
+  document.getElementById('monthLabel').innerText=`${curM+1} / ${curY}`;
+  const dim=new Date(curY,curM+1,0).getDate();let html='', total=0;
+  for(let i=1;i<=dim;i++){
+    const key=`${curY}-${curM+1}-${i}`;const rec=data[key]||{in:'',out:''};const isHol=hols[key];const hours=calcDiff(rec.in,rec.out); if(!isHol) total+=hours;
+    const dayAr=['أحد','إثنين','ثلاثاء','أربعاء','خميس','جمعة','سبت'][new Date(curY,curM,i).getDay()];
+    html+=`<div class="row-item"><div style="font-size:8.7px">${dayAr} (${i})</div><input type="tel" class="time-box ${rec.in?'filled':''}" value="${rec.in||''}" placeholder="7" onchange="saveD('${key}','in',this.value)"><input type="tel" class="time-box ${rec.out?'filled':''}" value="${rec.out||''}" placeholder="19" onchange="saveD('${key}','out',this.value)"><div class="en" style="font-size:9.7px">${hours?hours.toFixed(1):'-'}</div><input type="text" value="${notes[key]||''}" placeholder="..." onchange="saveNote('${key}',this.value)" style="width:95%;border:1px dashed var(--card-border);border-radius:7px;padding:3px;font-size:8px"><button onclick="toggleHol('${key}')" style="border:none;background:${isHol?'var(--hero)':'#eee'};width:19px;height:19px;border-radius:5px">${isHol?'✓':'○'}</button><button onclick="clearDay('${key}')" style="border:none;background:#FFF1F2;color:#ef4444;width:19px;height:19px;border-radius:5px">✕</button></div>`;
+  }
+  document.getElementById('days').innerHTML=html;
+  document.getElementById('outTotal').innerText=total.toFixed(1);
+  let v1=1200/26; document.getElementById('outPrice').innerText=v1.toFixed(0); document.getElementById('outSafi').innerText=Math.round(total*v1).toLocaleString();
+}
+
+window.saveD=async function(k,t,v){
+  let clean=toEn(v); if(!data[k]) data[k]={in:'',out:''}; data[k][t]=clean; localStorage.setItem('att_fixed_final',JSON.stringify(data));
+  if(window.Google Drive) await window.Google Drive.push();
+  renderAll();
+}
+window.saveNote=async function(k,v){notes[k]=v; localStorage.setItem('att_notes',JSON.stringify(notes)); if(window.Google Drive) await window.Google Drive.push();}
+window.toggleHol=function(k){ if(hols[k]) delete hols[k]; else hols[k]=true; localStorage.setItem('att_hols_fixed',JSON.stringify(hols)); renderAll(); }
+window.clearDay=async function(k){ data[k]={in:'',out:''}; localStorage.setItem('att_fixed_final',JSON.stringify(data)); if(window.Google Drive) await window.Google Drive.push(); renderAll(); }
+renderAll();
+</script></body></html>
