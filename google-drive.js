@@ -67,10 +67,6 @@ async function initGoogleDrive(){
 }
 
 function signInGoogle(){
-  if(GDRIVE_CONFIG.clientId.includes('YOUR_GOOGLE')){
-    alert('لازم تحط Google Client ID في Google Cloud Console\nاعمل OAuth Client ID\nوحطه في READMEE');
-    return;
-  }
   if(!tokenClient){ initGoogleDrive().then(()=> tokenClient.requestAccessToken({prompt: 'consent'})); return; }
   tokenClient.requestAccessToken({prompt: 'consent'});
 }
@@ -96,18 +92,14 @@ function updateUIStatus(state){
     el.innerHTML = '⚠️ مش مربوط - اضغط لربط Google Drive';
     el.style.background='#FEF3C7'; el.style.color='#92400E';
     el.onclick=signInGoogle;
-  } else if(state==='not-configured'){
-    el.innerHTML = '⚙️ ضع Google Client ID في google-drive.js';
-    el.style.background='#FEE2E2'; el.style.color='#991B1B';
   }
 }
 
 async function pushToDrive(){
-  if(!accessToken){ console.log('no token'); return; }
+  if(!accessToken) return;
   const payload={};
   GDRIVE_CONFIG.keys.forEach(k=>{ payload[k]=localStorage.getItem(k); });
   payload._lastSync = new Date().toISOString();
-  payload._version = 3;
   const fileContent = JSON.stringify(payload);
   const blob = new Blob([fileContent], {type:'application/json'});
   try{
@@ -134,7 +126,6 @@ async function pushToDrive(){
       const j = await res.json();
       fileId = j.id;
     }
-    console.log('✅ pushed to Google Drive');
     localStorage.setItem('_gdrive_last_push', new Date().toISOString());
   }catch(e){ console.error('push failed',e); }
 }
@@ -143,20 +134,12 @@ async function pullFromDrive(){
   if(!accessToken) return false;
   try{
     const list = await gapi.client.drive.files.list({ spaces:'appDataFolder', q: `name='${GDRIVE_CONFIG.fileName}'`, fields:'files(id,name,modifiedTime)' });
-    if(list.result.files.length===0){ console.log('no file yet'); await pushToDrive(); return false; }
+    if(list.result.files.length===0){ await pushToDrive(); return false; }
     fileId = list.result.files[0].id;
     const res = await gapi.client.drive.files.get({ fileId, alt:'media' });
-    let data = res.result;
-    let jsonData = data;
-    if(typeof data === 'string'){
-      try{ jsonData = JSON.parse(data); }catch(e){ jsonData = data; }
-    }
-    if(!jsonData._lastSync && (typeof jsonData === 'string')){
-      const r = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {headers:{'Authorization':'Bearer '+accessToken}});
-      jsonData = await r.json();
-    }
+    let jsonData = res.result;
+    if(typeof jsonData === 'string'){ try{ jsonData = JSON.parse(jsonData); }catch(e){} }
     GDRIVE_CONFIG.keys.forEach(k=>{ if(jsonData[k]!==undefined && jsonData[k]!==null) localStorage.setItem(k, jsonData[k]); });
-    console.log('✅ pulled from Drive', jsonData._lastSync);
     document.dispatchEvent(new CustomEvent('gdrive-data-updated'));
     document.dispatchEvent(new CustomEvent('onedrive-data-updated'));
     return true;
@@ -164,7 +147,6 @@ async function pullFromDrive(){
 }
 
 window.saveData = async function(){ await pushToDrive(); }
-window.deleteData = async function(){ await pushToDrive(); }
 window.GoogleDrive = { init:initGoogleDrive, signIn:signInGoogle, signOut:signOutGoogle, push:pushToDrive, pull:pullFromDrive };
 window.OneDrive = window.GoogleDrive;
 
