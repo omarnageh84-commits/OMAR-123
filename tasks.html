@@ -25,55 +25,8 @@
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;600;700;800&display=swap" rel="stylesheet">
 <link rel="manifest" href="manifest.json">
-<link rel="icon" href="icon-192.jpg">
-<title>مساحة العمل - Gmail + Themes</title>
-<script src="https://accounts.google.com/gsi/client" async defer></script>
-<script src="https://apis.google.com/js/api.js" async defer></script>
-
-<script>
-const THEMES = [
-  {id:'amber', name:'عنبر دافئ 🌅', hero:'#D97706', bg:'#FDF6E3', bgSoft:'#FFF7ED', card:'#FFFFFF', border:'#F5E6C8', text:'#1C1917', soft:'#A16207'},
-  {id:'dark', name:'ليلي 🌙', hero:'#111111', bg:'#121212', bgSoft:'#1E1E1E', card:'#1A1A1A', border:'#2A2A2A', text:'#FFFFFF', soft:'#888888'},
-  {id:'pharmacy', name:'صيدلية 💊', hero:'#0EA5E9', bg:'#F0F9FF', bgSoft:'#E0F2FE', card:'#FFFFFF', border:'#BAE6FD', text:'#0C4A6E', soft:'#0284C7'},
-  {id:'forest', name:'غابة 🌿', hero:'#16A34A', bg:'#F0FDF4', bgSoft:'#DCFCE7', card:'#FFFFFF', border:'#BBF7D0', text:'#14532D', soft:'#15803D'},
-  {id:'rose', name:'وردي 🌸', hero:'#E11D48', bg:'#FFF1F2', bgSoft:'#FFE4E6', card:'#FFFFFF', border:'#FECDD3', text:'#881337', soft:'#BE123C'},
-];
-function applyTheme(t){
-  const r=document.documentElement;
-  r.style.setProperty('--hero', t.hero);
-  r.style.setProperty('--bg', t.bg);
-  r.style.setProperty('--bg-soft', t.bgSoft);
-  r.style.setProperty('--card', t.card);
-  r.style.setProperty('--card-border', t.border);
-  r.style.setProperty('--text', t.text);
-  r.style.setProperty('--text-soft', t.soft);
-  r.style.setProperty('--primary', t.hero);
-  localStorage.setItem('selectedTheme', t.id);
-  document.body.style.background = t.bg;
-}
-function renderThemesList(){
-  const box=document.getElementById('themesList');
-  if(!box) return;
-  const curId=localStorage.getItem('selectedTheme')||'amber';
-  box.innerHTML=THEMES.map(t=>`
-    <div onclick="applyThemeById('${t.id}')" style="display:flex;justify-content:space-between;align-items:center;padding:10px;border-radius:10px;border:2px solid ${t.id===curId?'var(--hero)':'var(--card-border)'};background:${t.bg};cursor:pointer;margin-bottom:6px">
-      <div style="display:flex;gap:8px;align-items:center"><div style="width:22px;height:22px;border-radius:6px;background:${t.hero};border:1px solid #0002"></div><span style="font-size:11px;font-weight:800;color:${t.text}">${t.name}</span></div>
-      <span style="font-size:12px;font-weight:900">${t.id===curId?'✓':''}</span>
-    </div>
-  `).join('');
-}
-function applyThemeById(id){
-  const t=THEMES.find(x=>x.id===id);
-  if(t){ applyTheme(t); renderThemesList(); }
-}
-(function(){
-  const saved=localStorage.getItem('selectedTheme')||'amber';
-  const t=THEMES.find(x=>x.id===saved);
-  if(t) applyTheme(t);
-})();
-</script>
-
 <script src="themes.js"></script>
+<title>مساحة العمل</title>
 <style>
 :root{--hero:#D97706;--bg:#FDF6E3;--bg-soft:#FFF7ED;--card:#FFFFFF;--card-border:#F5E6C8;--text:#1C1917;--text-soft:#A16207;--primary:#D97706}
 *{box-sizing:border-box;margin:0;padding:0;font-family:'IBM Plex Sans Arabic',sans-serif}
@@ -90,47 +43,122 @@ body{background:var(--bg);height:100dvh;overflow:hidden;display:flex;flex-direct
 .hidden-note{background:var(--hero);color:#fff;border-radius:10px;padding:9px;margin-bottom:7px;border:1px solid var(--card-border);line-height:1.6;font-size:11.5px}
 .filter-chip{padding:6px 9px;border-radius:99px;border:1px solid var(--card-border);background:var(--card);font-size:9.8px;font-weight:800;cursor:pointer;white-space:nowrap;color:var(--text-soft)}
 .filter-chip.active{background:var(--hero);color:#fff;border-color:var(--hero)}
-#deleteWarningModal,#secretCodeModal,#gmailModal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:11000;align-items:center;justify-content:center;padding:14px;backdrop-filter:blur(8px)}
-#deleteWarningModal.show,#secretCodeModal.show,#gmailModal.show{display:flex}
+#deleteWarningModal,#secretCodeModal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:11000;align-items:center;justify-content:center;padding:14px;backdrop-filter:blur(8px)}
+#deleteWarningModal.show,#secretCodeModal.show{display:flex}
 .rich-toolbar{display:flex;gap:5px;padding:7px;background:var(--bg-soft);border-radius:9px;margin-bottom:7px;overflow:auto;align-items:center;flex-shrink:0;direction:rtl}
 .rich-toolbar button{border:1px solid var(--card-border);background:var(--card);padding:6px 10px;border-radius:7px;font-weight:800;flex-shrink:0;cursor:pointer;color:var(--text);font-size:11.5px;min-width:32px}
 .dot{width:20px;height:20px;border-radius:50%;border:1.5px solid var(--card);box-shadow:0 0 0 1px #ccc;cursor:pointer;flex-shrink:0}
 .rich-editor{flex:1;min-height:30vh;border:1px solid var(--card-border);border-radius:9px;padding:11px;outline:none;background:var(--card);line-height:1.8;overflow:auto;direction:rtl;text-align:right;white-space:pre-wrap;word-break:break-word;color:var(--text);font-size:12.6px}
 .rich-editor ul,.rich-editor ol{list-style-position:inside;padding:0;padding-right:20px;margin:9px 0;direction:rtl;text-align:right}
 #board{flex:1;overflow:auto;padding:7px;display:flex;flex-direction:column;gap:7px;background:var(--bg)}
-.gmail-connected{background:#E8F5E9!important;color:#2E7D32!important;border-color:#A5D6A7!important}
+
+.inner-tab{padding:6px 10px;border-radius:99px;border:1px solid var(--card-border);background:var(--card);font-size:10px;font-weight:700;cursor:pointer;white-space:nowrap;color:var(--text-soft);display:flex;align-items:center;gap:4px}
+.inner-tab.active{background:var(--hero);color:#fff;border-color:var(--hero)}
+.inner-tab-content{display:none}
+.inner-tab-content.active{display:flex;flex-direction:column}
+
+.hidden-chip{display:none!important}
+.hidden-chip.revealed{display:inline-flex!important;background:var(--hero)!important;color:#fff!important;border-color:var(--hero)!important;animation:slideUp .25s ease}
+
+.modal-cat-select{flex:1;background:var(--bg-soft);border:1px solid var(--card-border);border-radius:8px;padding:7px;font-weight:700;color:var(--text);font-size:10.3px}
+
 </style>
-</head>
+<script src="drive-sync.js"></script><style>html,body{max-width:430px;margin:0 auto !important;background:var(--bg);} body{border-left:1px solid var(--card-border);border-right:1px solid var(--card-border); min-height:100dvh;}
+.inner-tab{padding:6px 10px;border-radius:99px;border:1px solid var(--card-border);background:var(--card);font-size:10px;font-weight:700;cursor:pointer;white-space:nowrap;color:var(--text-soft);display:flex;align-items:center;gap:4px}
+.inner-tab.active{background:var(--hero);color:#fff;border-color:var(--hero)}
+.inner-tab-content{display:none}
+.inner-tab-content.active{display:flex;flex-direction:column}
+
+.hidden-chip{display:none!important}
+.hidden-chip.revealed{display:inline-flex!important;background:var(--hero)!important;color:#fff!important;border-color:var(--hero)!important;animation:slideUp .25s ease}
+
+.modal-cat-select{flex:1;background:var(--bg-soft);border:1px solid var(--card-border);border-radius:8px;padding:7px;font-weight:700;color:var(--text);font-size:10.3px}
+
+</style></head>
 <body>
 <div id="app">
 <div style="padding:9px 11px;border-bottom:1px solid var(--card-border);display:flex;justify-content:space-between;align-items:center;background:var(--card);position:sticky;top:0;z-index:5">
-<div style="display:flex;gap:9px;align-items:center;"><div id="vaultTrigger" style="width:36px;height:36px;background:var(--hero);border-radius:9px;display:flex;align-items:center;justify-content:center;color:#fff;cursor:pointer;font-size:16px">✦</div><div><div style="font-weight:800;font-size:12.6px;color:var(--text)">مساحة العمل</div><div id="stats" style="font-size:9.2px;color:var(--text-soft);"></div><div id="gmailStatus" style="font-size:9px;color:#2E7D32;display:none;font-weight:700">● مربوط بجيميل</div></div></div>
-<div style="display:flex;gap:5px;"><button id="gmailBtn" onclick="handleGmailAuth()" style="background:var(--card);border:1px solid var(--card-border);padding:7px 9px;border-radius:8px;cursor:pointer;font-weight:700;color:var(--text);font-size:9.2px">📧 جيميل</button><button onclick="openManager()" style="background:var(--bg-soft);border:1px solid var(--card-border);padding:7px 9px;border-radius:8px;cursor:pointer;font-weight:700;color:var(--text);font-size:9.2px">⚙ إدارة</button><button onclick="addQuick()" style="background:var(--hero);color:#fff;border:none;padding:7px 11px;border-radius:8px;font-weight:800;cursor:pointer;font-size:9.2px">+ جديد</button></div>
+<div style="display:flex;gap:9px;align-items:center;"><div id="vaultTrigger" style="width:36px;height:36px;background:var(--hero);border-radius:9px;display:flex;align-items:center;justify-content:center;color:#fff;cursor:pointer;font-size:16px">✦</div><div><div style="font-weight:800;font-size:12.6px;color:var(--text)">مساحة العمل</div><div id="stats" style="font-size:9.2px;color:var(--text-soft);"></div></div></div>
+<div style="display:flex;gap:5px;"><button onclick="openManager()" style="background:var(--bg-soft);border:1px solid var(--card-border);padding:7px 9px;border-radius:8px;cursor:pointer;font-weight:700;color:var(--text);font-size:9.2px">⚙ إدارة</button><button onclick="addQuick()" style="background:var(--hero);color:#fff;border:none;padding:7px 11px;border-radius:8px;font-weight:800;cursor:pointer;font-size:9.2px">+ جديد</button></div>
 </div>
 <div style="padding:7px;background:var(--bg-soft);border-bottom:1px solid var(--card-border);">
-<input id="mainInput" placeholder="ابحث أو أضف مهمة... (اكتب 279 للخفي)" style="width:100%;background:var(--card);border:1px solid var(--card-border);padding:8px 9px;border-radius:9px;outline:none;font-weight:700;color:var(--text);font-size:11.5px">
+<input id="mainInput" placeholder="ابحث في كل المهام (اسم، نوت، تبويبات داخلية...)" style="width:100%;background:var(--card);border:1px solid var(--card-border);padding:8px 9px;border-radius:9px;outline:none;font-weight:700;color:var(--text);font-size:11.5px">
 <div style="display:flex;gap:5px;margin-top:7px;align-items:center;"><select id="cat" style="flex:1;background:var(--card);border:1px solid var(--card-border);border-radius:8px;padding:7px;font-weight:700;color:var(--text);font-size:10.3px"></select><div id="quickColors" style="display:flex;gap:5px;flex:1;overflow:auto" class="nu-scroll"></div><button onclick="doAdd()" style="background:var(--hero);color:#fff;border:none;border-radius:8px;padding:7px 11px;font-weight:900;cursor:pointer;font-size:10.3px">إضافة</button></div>
 </div>
-<div style="background:var(--card);border-bottom:1px solid var(--card-border);padding:7px 9px;display:flex;gap:5px;align-items:center"><div id="taskTabsFilter" style="display:flex;gap:5px;overflow:auto;flex:1" class="nu-scroll">
+<div style="background:var(--card);border-bottom:1px solid var(--card-border);padding:7px 9px;"><div id="taskTabsFilter" style="display:flex;gap:5px;overflow:auto" class="nu-scroll">
 <button onclick="filterTasksTab('all')" id="tt_all" class="filter-chip active">الكل</button>
-<button onclick="filterTasksTab('صيدلية')" id="tt_صيدلية" class="filter-chip">💊 صيدلية</button>
-<button onclick="filterTasksTab('شغل')" id="tt_شغل" class="filter-chip">💻 شغل</button>
-<button onclick="filterTasksTab('شخصي')" id="tt_شخصي" class="filter-chip">🏠 شخصي</button>
+<div id="dynamicCatsChips" style="display:contents"></div>
 <button onclick="filterTasksTab('done')" id="tt_done" class="filter-chip">✓ منجز</button>
-</div><button onclick="openGmailImport()" style="background:var(--hero);color:#fff;border:none;padding:6px 10px;border-radius:99px;font-size:9.5px;white-space:nowrap;font-weight:800">📥 إيميل</button></div>
+<button onclick="filterTasksTab('مخفي')" id="tt_مخفي" class="filter-chip hidden-chip" style="display:none">🔒 مخفي</button>
+</div></div>
+<div id="hiddenBar" style="display:none;background:var(--hero);color:#fff;padding:8px 12px;align-items:center;justify-content:space-between;border-bottom:1px solid var(--card-border)">
+<div style="display:flex;gap:8px;align-items:center"><span style="font-size:12px">🔒</span><div><div style="font-size:11px;font-weight:800">وضع مخفي نشط</div><div style="font-size:8.5px;opacity:.9">دوس خروج هيختفي تاني</div></div></div>
+<div style="display:flex;gap:6px"><button onclick="openSecretModal()" style="background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.3);color:#fff;padding:6px 10px;border-radius:8px;font-size:9px;font-weight:700">تغيير الكود 🔑</button><button onclick="hideHiddenTabNow()" style="background:#fff;color:var(--hero);border:none;padding:6px 10px;border-radius:8px;font-size:9px;font-weight:800">خروج ✕</button></div>
+</div>
 <div id="board" class="nu-scroll"></div>
 </div>
-
-<div id="gmailModal" onclick="if(event.target==this)closeGmailImport()"><div style="background:var(--card);width:100%;max-width:420px;border-radius:16px;overflow:hidden;max-height:85vh;display:flex;flex-direction:column;border:1px solid var(--card-border)"><div style="padding:14px;border-bottom:1px solid var(--card-border);display:flex;justify-content:space-between;align-items:center"><b style="font-size:12px">📧 Gmail - استيراد مهام</b><button onclick="closeGmailImport()" style="border:none;background:var(--bg-soft);width:28px;height:28px;border-radius:8px">✕</button></div><div style="padding:10px;display:flex;gap:6px"><button onclick="fetchGmailEmails()" style="flex:1;background:var(--hero);color:#fff;border:none;padding:9px;border-radius:9px;font-weight:700;font-size:11px">🔄 تحديث</button><button onclick="exportTasksToGmail()" style="flex:1;background:var(--bg-soft);border:1px solid var(--card-border);padding:9px;border-radius:9px;font-size:11px">📤 تصدير مهامي</button></div><div id="gmailList" style="flex:1;overflow:auto;padding:10px;display:flex;flex-direction:column;gap:8px" class="nu-scroll"><div style="text-align:center;color:var(--text-soft);padding:20px;font-size:11px">اربط جيميل أولاً من فوق</div></div></div></div>
-
-<div id="secretCodeModal" onclick="if(event.target==this)closeSecretModal()"><div style="background:var(--card);color:var(--text);width:100%;max-width:345px;border-radius:18px;padding:16px;border:1px solid var(--card-border)"><div style="text-align:center"><div style="width:40px;height:40px;background:var(--bg-soft);border-radius:11px;display:flex;align-items:center;justify-content:center;margin:0 auto 7px;font-size:18px">✦</div><div style="font-weight:800;font-size:12.6px">الرقم التعريفي السري</div></div><input id="secretInput" type="tel" inputmode="numeric" placeholder="279" style="width:100%;background:var(--bg-soft);border:1px solid var(--card-border);padding:9px;border-radius:9px;color:var(--text);text-align:center;margin-top:11px;font-size:16px;font-weight:800"><div style="display:flex;gap:7px;margin-top:11px"><button onclick="closeSecretModal()" style="flex:1;background:var(--bg-soft);border:1px solid var(--card-border);padding:9px;border-radius:9px;font-size:10.3px">إلغاء</button><button onclick="saveSecretCode()" style="flex:1;background:var(--hero);color:#fff;border:none;padding:9px;border-radius:9px;font-size:10.3px">حفظ</button></div><div id="currentCodeHint" style="font-size:9.2px;color:var(--text-soft);text-align:center;margin-top:9px"></div></div></div>
-<div id="deleteWarningModal" onclick="if(event.target==this)closeDeleteWarning()"><div style="background:var(--card);width:100%;max-width:345px;border-radius:18px;overflow:hidden;border:1px solid var(--card-border)"><div style="background:#FEF2F2;padding:14px;text-align:center"><div style="font-size:28px">⚠</div><div style="font-weight:900;color:#991B1B;font-size:12.6px">هتحذف؟</div></div><div style="padding:11px"><div id="delTaskPreview" style="background:var(--bg-soft);border:1px solid var(--card-border);border-radius:9px;padding:9px;margin-bottom:9px;font-size:11.5px"></div><label style="display:flex;gap:7px;align-items:center;background:var(--bg-soft);border:1px solid var(--card-border);border-radius:9px;padding:8px"><input type="checkbox" id="delConfirmCheck" onchange="toggleDelBtn()"><span style="font-size:10.3px;font-weight:700">أنا متأكد</span></label><div style="display:flex;gap:9px;margin-top:9px"><button onclick="closeDeleteWarning()" style="flex:1;background:var(--bg-soft);border:1px solid var(--card-border);padding:9px;border-radius:9px;font-size:10.3px">إلغاء</button><button id="finalDelBtn" onclick="confirmDelete()" disabled style="flex:1;background:#E5E7EB;color:#9CA3AF;border:none;padding:9px;border-radius:9px;font-weight:800;font-size:10.3px">حذف</button></div></div></div></div>
-<div id="managerModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:10000;align-items:center;justify-content:center;padding:11px"><div style="background:var(--card);width:100%;max-width:437px;border-radius:16px;overflow:hidden;max-height:85vh;display:flex;flex-direction:column;border:1px solid var(--card-border)"><div style="display:flex;gap:4px;background:var(--bg-soft);margin:9px;padding:4px;border-radius:9px"><button onclick="mTab('cats')" id="mTabCats" style="flex:1;padding:7px;border:none;border-radius:7px;background:var(--card);font-weight:700;color:var(--text);font-size:10.3px">📁 التصنيفات</button><button onclick="mTab('colors')" id="mTabColors" style="flex:1;padding:7px;border:none;border-radius:7px;background:transparent;color:var(--text-soft);font-size:10.3px">🎨 الألوان</button><button onclick="mTab('themes')" id="mTabThemes" style="flex:1;padding:7px;border:none;border-radius:7px;background:transparent;color:var(--text-soft);font-size:10.3px">🌈 الثيمات</button></div><div style="flex:1;overflow:auto;padding:0 11px 11px" class="nu-scroll"><div id="mCats"><div style="display:flex;gap:5px;margin-bottom:11px"><input id="newCatEmoji" placeholder="💊" style="width:41px;text-align:center;border:1px solid var(--card-border);border-radius:8px;padding:7px;background:var(--card);color:var(--text);font-size:11.5px"><input id="newCatName" placeholder="اسم التصنيف" style="flex:1;border:1px solid var(--card-border);border-radius:8px;padding:7px;background:var(--card);color:var(--text);font-size:11.5px"><button onclick="addCategory()" style="background:var(--hero);color:#fff;border:none;padding:7px 11px;border-radius:8px;font-size:11.5px">+</button></div><div id="catList"></div></div><div id="mColors" style="display:none"><div id="excelTheme" class="excel-grid"></div><div id="excelStandard" class="excel-grid" style="margin-top:9px"></div></div><div id="mThemes" style="display:none"><div id="themesList" style="display:flex;flex-direction:column;gap:6px"></div></div></div><div style="padding:9px 11px;border-top:1px solid var(--card-border)"><button onclick="closeManager()" style="width:100%;background:var(--bg-soft);border:1px solid var(--card-border);padding:8px;border-radius:9px;color:var(--text);font-size:10.3px">إغلاق</button></div></div></div>
-
+<div id="secretCodeModal" onclick="if(event.target==this)closeSecretModal()"><div style="background:var(--card);color:var(--text);width:100%;max-width:360px;border-radius:18px;padding:0;overflow:hidden;border:1px solid var(--card-border);box-shadow:0 25px 50px -12px rgba(0,0,0,.3)">
+<div style="background:var(--bg-soft);padding:16px;text-align:center;border-bottom:1px solid var(--card-border)">
+<div style="width:48px;height:48px;background:var(--card);border:1px solid var(--card-border);border-radius:12px;display:flex;align-items:center;justify-content:center;margin:0 auto 8px;font-size:22px">🔐</div>
+<div style="font-weight:800;font-size:13px">الرقم السري للمخفي</div>
+<div style="font-size:9.5px;color:var(--text-soft);margin-top:3px">اللي بتكتبه في البحث عشان تفتح 🔒 مخفي</div>
+</div>
+<div style="padding:16px">
+<div id="currentCodeDisplay" style="background:var(--bg-soft);border:1px dashed var(--card-border);border-radius:10px;padding:10px;text-align:center;margin-bottom:12px">
+<div style="font-size:9px;color:var(--text-soft)">الكود الحالي</div>
+<div id="currentCodeBig" style="font-size:20px;font-weight:900;letter-spacing:3px;color:var(--hero);margin-top:2px">279</div>
+</div>
+<input id="secretInput" type="tel" inputmode="numeric" placeholder="اكتب كود جديد..." style="width:100%;background:var(--bg-soft);border:1.5px solid var(--card-border);padding:12px;border-radius:12px;color:var(--text);text-align:center;font-size:18px;font-weight:800;letter-spacing:4px;outline:none">
+<div id="currentCodeHint" style="font-size:9.5px;color:var(--text-soft);text-align:center;margin-top:8px"></div>
+<div id="secretError" style="font-size:9.5px;color:#ef4444;text-align:center;margin-top:6px;display:none"></div>
+</div>
+<div style="padding:0 16px 16px 16px;display:flex;gap:8px">
+<button onclick="closeSecretModal()" style="flex:1;background:var(--bg-soft);border:1px solid var(--card-border);padding:11px;border-radius:12px;font-weight:700;font-size:11px">إلغاء</button>
+<button onclick="saveSecretCode()" style="flex:1.5;background:var(--hero);color:#fff;border:none;padding:11px;border-radius:12px;font-weight:800;font-size:11px">حفظ الكود الجديد ✓</button>
+</div>
+</div></div>
+<div id="deleteWarningModal" onclick="if(event.target==this)closeDeleteWarning()"><div style="background:var(--card);width:100%;max-width:345px;border-radius:18px;overflow:hidden;border:1px solid var(--card-border)"><div style="background:#FEF2F2;padding:14px;text-align:center"><div style="font-size:28px">⚠️</div><div style="font-weight:900;color:#991B1B;font-size:12.6px">هتحذف؟</div></div><div style="padding:11px"><div id="delTaskPreview" style="background:var(--bg-soft);border:1px solid var(--card-border);border-radius:9px;padding:9px;margin-bottom:9px;font-size:11.5px"></div><label style="display:flex;gap:7px;align-items:center;background:var(--bg-soft);border:1px solid var(--card-border);border-radius:9px;padding:8px"><input type="checkbox" id="delConfirmCheck" onchange="toggleDelBtn()"><span style="font-size:10.3px;font-weight:700">أنا متأكد</span></label><div style="display:flex;gap:9px;margin-top:9px"><button onclick="closeDeleteWarning()" style="flex:1;background:var(--bg-soft);border:1px solid var(--card-border);padding:9px;border-radius:9px;font-size:10.3px">إلغاء</button><button id="finalDelBtn" onclick="confirmDelete()" disabled style="flex:1;background:#E5E7EB;color:#9CA3AF;border:none;padding:9px;border-radius:9px;font-weight:800;font-size:10.3px">حذف</button></div></div></div></div>
+<div id="managerModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:10000;align-items:center;justify-content:center;padding:11px"><div style="background:var(--card);width:100%;max-width:437px;border-radius:16px;overflow:hidden;max-height:85vh;display:flex;flex-direction:column;border:1px solid var(--card-border)"><div style="display:flex;gap:4px;background:var(--bg-soft);margin:9px;padding:4px;border-radius:9px"><button onclick="mTab('cats')" id="mTabCats" style="flex:1;padding:7px;border:none;border-radius:7px;background:var(--card);font-weight:700;color:var(--text);font-size:10.3px">📁 التصنيفات</button><button onclick="mTab('colors')" id="mTabColors" style="flex:1;padding:7px;border:none;border-radius:7px;background:transparent;color:var(--text-soft);font-size:10.3px">🎨 الألوان</button></div><div style="flex:1;overflow:auto;padding:0 11px 11px" class="nu-scroll"><div id="mCats"><div style="display:flex;gap:5px;margin-bottom:11px"><input id="newCatEmoji" placeholder="💊" style="width:41px;text-align:center;border:1px solid var(--card-border);border-radius:8px;padding:7px;background:var(--card);color:var(--text);font-size:11.5px"><input id="newCatName" placeholder="اسم التصنيف" style="flex:1;border:1px solid var(--card-border);border-radius:8px;padding:7px;background:var(--card);color:var(--text);font-size:11.5px"><button onclick="addCategory()" style="background:var(--hero);color:#fff;border:none;padding:7px 11px;border-radius:8px;font-size:11.5px">+</button></div><div id="catList"></div></div><div id="mColors" style="display:none"><div id="excelTheme" class="excel-grid"></div><div id="excelStandard" class="excel-grid" style="margin-top:9px"></div></div></div><div style="padding:9px 11px;border-top:1px solid var(--card-border)"><button onclick="closeManager()" style="width:100%;background:var(--bg-soft);border:1px solid var(--card-border);padding:8px;border-radius:9px;color:var(--text);font-size:10.3px">إغلاق</button></div></div></div>
 <div id="modal" style="display:none;position:fixed;inset:0;background:var(--card);z-index:9999;flex-direction:column;max-width:600px;margin:0 auto">
 <div id="modalCover" style="height:69px;position:relative;flex-shrink:0;background:var(--bg-soft);border-bottom:1px solid var(--card-border)"><button onclick="closeModal()" style="position:absolute;top:9px;left:9px;background:rgba(0,0,0,.15);border:none;width:32px;height:32px;border-radius:50%;color:#000;font-weight:800;cursor:pointer;font-size:14px">✕</button></div>
 <div style="padding:9px;flex:1;overflow:auto;display:flex;flex-direction:column;background:var(--bg)" class="nu-scroll">
 <h2 id="modalTitle" contenteditable="true" style="font-size:13.8px;font-weight:800;outline:none;border-bottom:1px dashed var(--card-border);padding-bottom:7px;margin-bottom:9px;color:var(--text)"></h2>
+<div style="display:flex;gap:6px;align-items:center;background:var(--bg-soft);border:1px solid var(--card-border);border-radius:10px;padding:7px;margin-bottom:9px">
+<span style="font-size:9.5px;font-weight:800;color:var(--text-soft)">التصنيف:</span>
+<select id="modalCat" onchange="changeModalCat()" class="modal-cat-select"></select>
+<span style="font-size:9px;color:var(--text-soft)">💊 صيدلية / 💻 شغل / 🏠 شخصي</span>
+</div>
+
+<div style="background:var(--card);border:1px solid var(--card-border);border-radius:11px;padding:8px;margin-bottom:9px">
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+<b style="font-size:10.5px">📑 تبويبات داخلية</b>
+<button onclick="addInnerTab()" style="background:var(--hero);color:#fff;border:none;padding:5px 10px;border-radius:7px;font-size:9.5px;font-weight:800">+ تبويب</button>
+</div>
+<div id="innerTabsBar" style="display:flex;gap:5px;overflow:auto;padding:2px 0" class="nu-scroll"></div>
+<div id="innerTabEmpty" style="text-align:center;padding:12px;color:var(--text-soft);font-size:9.5px;display:none">مفيش تبويبات - دوس + تبويب (مثال: شغله، مشاكله، مميزاته، ملاحظات)</div>
+<div id="innerTabEditorBox" style="display:none;margin-top:8px">
+<div class="rich-toolbar" id="innerToolbar">
+<button onmousedown="event.preventDefault()" onclick="formatInner('bold')"><b>B</b></button>
+<button onmousedown="event.preventDefault()" onclick="changeInnerFontSize(2)">A+</button>
+<button onmousedown="event.preventDefault()" onclick="changeInnerFontSize(-2)">A-</button>
+<button onmousedown="event.preventDefault()" onclick="formatInner('insertUnorderedList')">• نقط</button>
+<button onmousedown="event.preventDefault()" onclick="formatInner('insertOrderedList')">1. ترقيم</button>
+<div class="dot" style="background:#ef4444" onmousedown="event.preventDefault();applyInnerColor('#ef4444')"></div>
+<div class="dot" style="background:#22c55e" onmousedown="event.preventDefault();applyInnerColor('#22c55e')"></div>
+<div class="dot" style="background:#3b82f6" onmousedown="event.preventDefault();applyInnerColor('#3b82f6')"></div>
+<div class="dot" style="background:#f59e0b" onmousedown="event.preventDefault();applyInnerColor('#f59e0b')"></div>
+<div class="dot" style="background:#8b5cf6" onmousedown="event.preventDefault();applyInnerColor('#8b5cf6')"></div>
+</div>
+<div style="display:flex;gap:5px;margin-bottom:6px">
+<input id="innerTabTitleInput" placeholder="اسم التبويب (مثال: شغله)" style="flex:1;background:var(--bg-soft);border:1px solid var(--card-border);border-radius:7px;padding:7px;font-size:10.5px;font-weight:700">
+<button onclick="saveInnerTabTitle()" style="background:var(--bg-soft);border:1px solid var(--card-border);padding:7px 10px;border-radius:7px;font-size:10px">✓</button>
+<button onclick="deleteInnerTab(curInnerTabId)" style="background:#FFF1F2;border:1px solid #FECDD3;padding:7px 10px;border-radius:7px;font-size:10px;color:#ef4444">🗑</button>
+</div>
+<div id="innerTabEditor" class="rich-editor" contenteditable="true" style="min-height:20vh"></div>
+<button onclick="saveInnerTabContent()" style="width:100%;margin-top:7px;background:var(--hero);color:#fff;border:none;padding:8px;border-radius:8px;font-weight:800;font-size:10.5px">حفظ التبويب</button>
+</div>
+</div>
+
 <div style="background:var(--card);border:1px solid var(--card-border);border-radius:11px;padding:8px;margin-bottom:9px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px"><b style="font-size:10.3px">✔ مهام فرعية</b><span id="subProgress" style="font-size:9.2px;background:var(--bg-soft);padding:3px 7px;border-radius:99px">0/0</span></div><div id="subList" style="display:flex;flex-direction:column;gap:5px;margin-bottom:7px"></div><div style="display:flex;gap:5px"><input id="subInput" placeholder="مهمة فرعية + Enter" style="flex:1;border:1px solid var(--card-border);border-radius:7px;padding:7px;background:var(--card);color:var(--text);font-size:10.3px"><button onclick="addSub()" style="background:var(--hero);color:#fff;border:none;padding:7px 11px;border-radius:7px;font-weight:800;font-size:10.3px">+</button></div><div style="height:5px;background:var(--bg-soft);border-radius:10px;margin-top:7px;overflow:hidden"><div id="subBar" style="height:100%;width:0%;background:var(--hero)"></div></div></div>
 <div style="display:flex;gap:4px;background:var(--bg-soft);padding:4px;border-radius:9px;margin-bottom:9px;overflow:auto" class="nu-scroll">
 <button onclick="tab('colors')" id="tColors" class="tab">🎨 ألوان</button><button onclick="tab('camera')" id="tCamera" class="tab">📷 كاميرا</button><button onclick="tab('draw')" id="tDraw" class="tab">✏ رسم</button><button onclick="tab('voice')" id="tVoice" class="tab">🎙 فويس</button><button onclick="tab('note')" id="tNote" class="tab active">📝 نوت</button><button onclick="tab('rem')" id="tRem" class="tab">⏰ منبه</button><button onclick="tab('hidden')" id="tHidden" class="tab" style="display:none;background:var(--hero);color:#fff">🔒 الخاص</button>
@@ -156,121 +184,181 @@ body{background:var(--bg);height:100dvh;overflow:hidden;display:flex;flex-direct
 <div id="noteEditor" class="rich-editor" contenteditable="true"></div>
 <button onclick="saveNote()" style="width:100%;margin-top:7px;background:var(--hero);color:#fff;border:none;padding:8px;border-radius:9px;font-weight:800;font-size:10.3px">حفظ النوت</button>
 </div>
-<div id="pRem" style="display:none"><div style="background:var(--card);border:1px solid var(--card-border);border-radius:12px;padding:11px"><label style="display:flex;justify-content:space-between;align-items:center;font-size:11.5px;font-weight:800;margin-bottom:11px"><span>🔔 تفعيل المنبه الاحترافي</span><input type="checkbox" id="remEnabled" onchange="toggleRem()" style="width:20px;height:20px"></label><div id="remBox" style="display:none"><div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:9px"><div><div style="font-size:9.2px;color:var(--text-soft);margin-bottom:2px">التاريخ</div><input type="date" id="remDate" style="width:100%;border:1px solid var(--card-border);border-radius:8px;padding:8px;background:var(--bg-soft);font-size:11.5px"></div><div><div style="font-size:9.2px;color:var(--text-soft);margin-bottom:2px">الوقت</div><input type="time" id="remTime" style="width:100%;border:1px solid var(--card-border);border-radius:8px;padding:8px;background:var(--bg-soft);font-size:11.5px"></div></div><div style="margin-bottom:9px"><div style="font-size:9.2px;color:var(--text-soft);margin-bottom:2px">التكرار</div><select id="remRepeat" onchange="updateRepeatUI()" style="width:100%;border:1px solid var(--card-border);border-radius:8px;padding:8px;background:var(--bg-soft);font-size:11.5px"><option value="none">🔕 مرة واحدة</option><option value="daily">🔁 يومياً</option><option value="weekly">📅 أسبوعياً</option><option value="monthly">🗓 شهرياً</option><option value="yearly">🎂 سنوياً</option><option value="custom_days">⏱ كل X أيام</option><option value="custom_hours">⏰ كل X ساعات</option><option value="weekdays">📌 أيام محددة</option></select></div><div id="customRepeatBox" style="display:none;background:var(--bg-soft);border:1px dashed var(--card-border);border-radius:9px;padding:9px;margin-bottom:9px"><div id="customDaysUI" style="display:none"><label style="font-size:10.3px">كل كام يوم؟</label><input type="number" id="remEveryDays" value="2" min="1" style="width:100%;padding:7px;border-radius:7px;border:1px solid var(--card-border);margin-top:5px"></div><div id="customHoursUI" style="display:none"><label style="font-size:10.3px">كل كام ساعة؟</label><input type="number" id="remEveryHours" value="3" min="1" style="width:100%;padding:7px;border-radius:7px;border:1px solid var(--card-border);margin-top:5px"></div><div id="weekdaysUI" style="display:none"><label style="font-size:10.3px">اختار الأيام:</label><div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:5px"><label style="font-size:10.3px"><input type="checkbox" value="6" class="wd"> سبت</label><label style="font-size:10.3px"><input type="checkbox" value="0" class="wd"> أحد</label><label style="font-size:10.3px"><input type="checkbox" value="1" class="wd"> اثنين</label><label style="font-size:10.3px"><input type="checkbox" value="2" class="wd"> ثلاثاء</label><label style="font-size:10.3px"><input type="checkbox" value="3" class="wd"> أربعاء</label><label style="font-size:10.3px"><input type="checkbox" value="4" class="wd"> خميس</label><label style="font-size:10.3px"><input type="checkbox" value="5" class="wd"> جمعة</label></div></div></div><div style="margin-bottom:9px"><div style="font-size:9.2px;color:var(--text-soft);margin-bottom:2px">ينتهي؟</div><select id="remEndType" onchange="updateEndUI()" style="width:100%;border:1px solid var(--card-border);border-radius:8px;padding:8px;background:var(--bg-soft);font-size:11.5px"><option value="never">♾ للأبد</option><option value="after">🔢 بعد عدد مرات</option><option value="onDate">📅 حتى تاريخ</option></select><input type="number" id="remAfterCount" placeholder="مثال: 10" style="display:none;width:100%;margin-top:7px;padding:7px;border-radius:7px;border:1px solid var(--card-border)"><input type="date" id="remEndDate" style="display:none;width:100%;margin-top:7px;padding:7px;border-radius:7px;border:1px solid var(--card-border)"></div><div id="remNext" style="font-size:10.3px;color:var(--primary);font-weight:800;background:var(--bg-soft);padding:7px;border-radius:7px;text-align:center;margin-bottom:9px">حدد الوقت</div><button onclick="saveReminderPro()" style="width:100%;background:var(--primary);color:#fff;border:none;padding:10px;border-radius:9px;font-weight:900;font-size:11.5px">💾 حفظ المنبه + تفعيل الإشعار برا</button></div></div></div>
-<div id="pHidden" style="display:none"><div id="hiddenAuth" style="background:var(--card);border-radius:11px;padding:11px;border:1px solid var(--card-border)"><div style="text-align:center"><div style="font-size:28px">🔒</div><div style="font-weight:800;font-size:11.5px;margin-top:5px">القسم الخاص</div></div><input id="hPass" type="password" inputmode="numeric" placeholder="••••" style="width:100%;background:var(--bg-soft);border:1px solid var(--card-border);padding:9px;border-radius:8px;text-align:center;margin-top:9px"><button onclick="unlockHidden()" style="width:100%;margin-top:7px;background:var(--hero);color:#fff;border:none;padding:8px;border-radius:8px;font-size:10.3px">فتح 🔓</button><div id="hErr" style="color:#ff5a5a;font-size:9.2px;text-align:center;margin-top:7px;display:none"></div></div><div id="hiddenContent" style="display:none"><div style="background:var(--card);border-radius:11px;padding:9px;border:1px solid var(--card-border)"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:7px"><b style="font-size:10.3px">📓 الخاص</b><div style="display:flex;gap:5px"><button onclick="openChangePassword()" style="background:var(--bg-soft);border:1px solid var(--card-border);padding:5px 7px;border-radius:7px;font-size:9.2px">🔑</button><button onclick="openHiddenEditor()" style="background:var(--hero);color:#fff;border:none;padding:5px 9px;border-radius:7px;font-size:9.2px">+ نوت</button><button onclick="hideHiddenTab()" style="background:var(--bg-soft);border:1px solid var(--card-border);padding:5px 7px;border-radius:7px;font-size:9.2px">إخفاء</button></div></div><div id="hiddenEditorBox" style="display:none;background:var(--bg-soft);border:1px solid var(--card-border);border-radius:9px;padding:7px;margin-bottom:7px"><div class="rich-toolbar"><button onmousedown="event.preventDefault()" onclick="formatHidden('bold')"><b>B</b></button><button onmousedown="event.preventDefault()" onclick="changeHiddenFontSize(2)">A+</button><button onmousedown="event.preventDefault()" onclick="changeHiddenFontSize(-2)">A-</button><button onmousedown="event.preventDefault()" onclick="formatHidden('insertUnorderedList')">• نقط</button><button onmousedown="event.preventDefault()" onclick="formatHidden('insertOrderedList')">1. ترقيم</button><div class="dot" style="background:#ef4444" onmousedown="event.preventDefault();applyHiddenColor('#ef4444')"></div><div class="dot" style="background:#22c55e" onmousedown="event.preventDefault();applyHiddenColor('#22c55e')"></div><div class="dot" style="background:#3b82f6" onmousedown="event.preventDefault();applyHiddenColor('#3b82f6')"></div><div class="dot" style="background:#f59e0b" onmousedown="event.preventDefault();applyHiddenColor('#f59e0b')"></div><div class="dot" style="background:#fff" onmousedown="event.preventDefault();applyHiddenColor('#ffffff')"></div></div><input id="hiddenTitle" placeholder="عنوان..." style="width:100%;background:var(--card);border:1px solid var(--card-border);padding:7px;border-radius:7px;color:var(--text);margin-bottom:7px;font-size:10.3px"><div id="hiddenBody" class="rich-editor" contenteditable="true" style="background:var(--card);color:var(--text);min-height:17vh;font-size:11.5px"></div><div style="display:flex;gap:5px;margin-top:7px"><button onclick="saveHiddenRich()" style="flex:1;background:var(--hero);color:#fff;border:none;padding:7px;border-radius:7px;font-weight:800;font-size:10.3px">حفظ</button><button onclick="closeHiddenEditor()" style="flex:1;background:var(--bg-soft);border:1px solid var(--card-border);padding:7px;border-radius:7px;font-size:10.3px">إلغاء</button></div></div><input id="hSearch" placeholder="بحث..." oninput="renderHidden()" style="width:100%;background:var(--bg-soft);border:1px solid var(--card-border);padding:7px 9px;border-radius:7px;font-size:10.3px;margin-bottom:7px"><div id="hList"></div></div></div></div>
+<div id="pRem" style="display:none">
+  <div style="background:var(--card);border:1px solid var(--card-border);border-radius:12px;padding:11px">
+    <label style="display:flex;justify-content:space-between;align-items:center;font-size:11.5px;font-weight:800;margin-bottom:11px"><span>🔔 تفعيل المنبه الاحترافي</span><input type="checkbox" id="remEnabled" onchange="toggleRem()" style="width:20px;height:20px"></label>
+    <div id="remBox" style="display:none">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:9px"><div><div style="font-size:9.2px;color:var(--text-soft);margin-bottom:2px">التاريخ</div><input type="date" id="remDate" style="width:100%;border:1px solid var(--card-border);border-radius:8px;padding:8px;background:var(--bg-soft);font-size:11.5px"></div><div><div style="font-size:9.2px;color:var(--text-soft);margin-bottom:2px">الوقت</div><input type="time" id="remTime" style="width:100%;border:1px solid var(--card-border);border-radius:8px;padding:8px;background:var(--bg-soft);font-size:11.5px"></div></div>
+      <div style="margin-bottom:9px"><div style="font-size:9.2px;color:var(--text-soft);margin-bottom:2px">التكرار</div><select id="remRepeat" onchange="updateRepeatUI()" style="width:100%;border:1px solid var(--card-border);border-radius:8px;padding:8px;background:var(--bg-soft);font-size:11.5px"><option value="none">🔕 مرة واحدة</option><option value="daily">🔁 يومياً</option><option value="weekly">📅 أسبوعياً</option><option value="monthly">🗓️ شهرياً</option><option value="yearly">🎂 سنوياً</option><option value="custom_days">⏱️ كل X أيام</option><option value="custom_hours">⏰ كل X ساعات</option><option value="weekdays">📌 أيام محددة</option></select></div>
+      <div id="customRepeatBox" style="display:none;background:var(--bg-soft);border:1px dashed var(--card-border);border-radius:9px;padding:9px;margin-bottom:9px"><div id="customDaysUI" style="display:none"><label style="font-size:10.3px">كل كام يوم؟</label><input type="number" id="remEveryDays" value="2" min="1" style="width:100%;padding:7px;border-radius:7px;border:1px solid var(--card-border);margin-top:5px"></div><div id="customHoursUI" style="display:none"><label style="font-size:10.3px">كل كام ساعة؟</label><input type="number" id="remEveryHours" value="3" min="1" style="width:100%;padding:7px;border-radius:7px;border:1px solid var(--card-border);margin-top:5px"></div><div id="weekdaysUI" style="display:none"><label style="font-size:10.3px">اختار الأيام:</label><div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:5px"><label style="font-size:10.3px"><input type="checkbox" value="6" class="wd"> سبت</label><label style="font-size:10.3px"><input type="checkbox" value="0" class="wd"> أحد</label><label style="font-size:10.3px"><input type="checkbox" value="1" class="wd"> اثنين</label><label style="font-size:10.3px"><input type="checkbox" value="2" class="wd"> ثلاثاء</label><label style="font-size:10.3px"><input type="checkbox" value="3" class="wd"> أربعاء</label><label style="font-size:10.3px"><input type="checkbox" value="4" class="wd"> خميس</label><label style="font-size:10.3px"><input type="checkbox" value="5" class="wd"> جمعة</label></div></div></div>
+      <div style="margin-bottom:9px"><div style="font-size:9.2px;color:var(--text-soft);margin-bottom:2px">ينتهي؟</div><select id="remEndType" onchange="updateEndUI()" style="width:100%;border:1px solid var(--card-border);border-radius:8px;padding:8px;background:var(--bg-soft);font-size:11.5px"><option value="never">♾️ للأبد</option><option value="after">🔢 بعد عدد مرات</option><option value="onDate">📅 حتى تاريخ</option></select><input type="number" id="remAfterCount" placeholder="مثال: 10" style="display:none;width:100%;margin-top:7px;padding:7px;border-radius:7px;border:1px solid var(--card-border)"><input type="date" id="remEndDate" style="display:none;width:100%;margin-top:7px;padding:7px;border-radius:7px;border:1px solid var(--card-border)"></div>
+      <div id="remNext" style="font-size:10.3px;color:var(--primary);font-weight:800;background:var(--bg-soft);padding:7px;border-radius:7px;text-align:center;margin-bottom:9px">حدد الوقت</div>
+      <button onclick="saveReminderPro()" style="width:100%;background:var(--primary);color:#fff;border:none;padding:10px;border-radius:9px;font-weight:900;font-size:11.5px">💾 حفظ المنبه + تفعيل الإشعار برا</button>
+    </div>
+  </div>
+</div>
+<div id="pHidden" style="display:none">
+<div id="hiddenAuth" style="background:var(--card);border-radius:11px;padding:11px;border:1px solid var(--card-border)"><div style="text-align:center"><div style="font-size:28px">🔒</div><div style="font-weight:800;font-size:11.5px;margin-top:5px">القسم الخاص</div></div><input id="hPass" type="password" inputmode="numeric" placeholder="••••" style="width:100%;background:var(--bg-soft);border:1px solid var(--card-border);padding:9px;border-radius:8px;text-align:center;margin-top:9px"><button onclick="unlockHidden()" style="width:100%;margin-top:7px;background:var(--hero);color:#fff;border:none;padding:8px;border-radius:8px;font-size:10.3px">فتح 🔓</button><div id="hErr" style="color:#ff5a5a;font-size:9.2px;text-align:center;margin-top:7px;display:none"></div></div>
+<div id="hiddenContent" style="display:none"><div style="background:var(--card);border-radius:11px;padding:9px;border:1px solid var(--card-border)"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:7px"><b style="font-size:10.3px">📓 الخاص</b><div style="display:flex;gap:5px"><button onclick="openChangePassword()" style="background:var(--bg-soft);border:1px solid var(--card-border);padding:5px 7px;border-radius:7px;font-size:9.2px">🔑</button><button onclick="openHiddenEditor()" style="background:var(--hero);color:#fff;border:none;padding:5px 9px;border-radius:7px;font-size:9.2px">+ نوت</button><button onclick="hideHiddenTab()" style="background:var(--bg-soft);border:1px solid var(--card-border);padding:5px 7px;border-radius:7px;font-size:9.2px">إخفاء</button></div></div><div id="hiddenEditorBox" style="display:none;background:var(--bg-soft);border:1px solid var(--card-border);border-radius:9px;padding:7px;margin-bottom:7px"><div class="rich-toolbar"><button onmousedown="event.preventDefault()" onclick="formatHidden('bold')"><b>B</b></button><button onmousedown="event.preventDefault()" onclick="changeHiddenFontSize(2)">A+</button><button onmousedown="event.preventDefault()" onclick="changeHiddenFontSize(-2)">A-</button><button onmousedown="event.preventDefault()" onclick="formatHidden('insertUnorderedList')">• نقط</button><button onmousedown="event.preventDefault()" onclick="formatHidden('insertOrderedList')">1. ترقيم</button><div class="dot" style="background:#ef4444" onmousedown="event.preventDefault();applyHiddenColor('#ef4444')"></div><div class="dot" style="background:#22c55e" onmousedown="event.preventDefault();applyHiddenColor('#22c55e')"></div><div class="dot" style="background:#3b82f6" onmousedown="event.preventDefault();applyHiddenColor('#3b82f6')"></div><div class="dot" style="background:#f59e0b" onmousedown="event.preventDefault();applyHiddenColor('#f59e0b')"></div><div class="dot" style="background:#fff" onmousedown="event.preventDefault();applyHiddenColor('#ffffff')"></div></div><input id="hiddenTitle" placeholder="عنوان..." style="width:100%;background:var(--card);border:1px solid var(--card-border);padding:7px;border-radius:7px;color:var(--text);margin-bottom:7px;font-size:10.3px"><div id="hiddenBody" class="rich-editor" contenteditable="true" style="background:var(--card);color:var(--text);min-height:17vh;font-size:11.5px"></div><div style="display:flex;gap:5px;margin-top:7px"><button onclick="saveHiddenRich()" style="flex:1;background:var(--hero);color:#fff;border:none;padding:7px;border-radius:7px;font-weight:800;font-size:10.3px">حفظ</button><button onclick="closeHiddenEditor()" style="flex:1;background:var(--bg-soft);border:1px solid var(--card-border);padding:7px;border-radius:7px;font-size:10.3px">إلغاء</button></div></div><input id="hSearch" placeholder="بحث..." oninput="renderHidden()" style="width:100%;background:var(--bg-soft);border:1px solid var(--card-border);padding:7px 9px;border-radius:7px;font-size:10.3px;margin-bottom:7px"><div id="hList"></div></div></div>
+</div>
 </div>
 <div style="padding:7px 9px;border-top:1px solid var(--card-border);display:flex;gap:7px;flex-shrink:0;background:var(--card)"><button onclick="deleteCurrent()" style="background:#FFF1F2;color:#ef4444;border:1px solid #FECDD3;padding:8px 11px;border-radius:8px;flex:1;font-weight:800;font-size:9.2px">🗑 حذف</button><button onclick="toggleDone()" id="doneBtn" style="background:var(--hero);color:#fff;border:none;padding:8px 11px;border-radius:8px;font-weight:800;flex:2;font-size:10.3px">تم ✓</button></div>
 </div>
+<script>
+// تابع للرئيسية فقط - نفس فكرة الحضور
+(function(){ const s=localStorage.getItem('theme')||'paper'; if(typeof applyTheme==='function') applyTheme(s); })();
+window.addEventListener('storage',()=>{ const s=localStorage.getItem('theme')||'paper'; if(typeof applyTheme==='function') applyTheme(s); });
 
-<script>
-/* ===== GMAIL INTEGRATION ===== */
-const GMAIL_CLIENT_ID = 'YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com';
-const GMAIL_SCOPES = 'https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.send';
-let tokenClient, gapiInited=false, gisInited=false, gmailAccessToken=null;
-window.addEventListener('load', ()=>{
-  gapi.load('client', async () => {
-    await gapi.client.init({});
-    await gapi.client.load('https://www.googleapis.com/discovery/v1/apis/gmail/v1/rest');
-    gapiInited=true;
-    const saved = localStorage.getItem('gmail_token');
-    if(saved){ gmailAccessToken=saved; document.getElementById('gmailBtn').innerText='✓ مربوط'; document.getElementById('gmailBtn').classList.add('gmail-connected'); document.getElementById('gmailStatus').style.display='block'; }
-  });
-  setTimeout(()=>{
-    if(window.google && window.google.accounts){
-      tokenClient = google.accounts.oauth2.initTokenClient({
-        client_id: GMAIL_CLIENT_ID,
-        scope: GMAIL_SCOPES,
-        callback: (resp) => {
-          if(resp.access_token){
-            gmailAccessToken = resp.access_token;
-            localStorage.setItem('gmail_token', resp.access_token);
-            document.getElementById('gmailBtn').innerText='✓ مربوط';
-            document.getElementById('gmailBtn').classList.add('gmail-connected');
-            document.getElementById('gmailStatus').style.display='block';
-            fetchGmailEmails();
-          }
-        }
-      });
-      gisInited=true;
-    }
-  },1500);
-});
-function handleGmailAuth(){
-  if(GMAIL_CLIENT_ID.includes('YOUR_GOOGLE')){ alert('حط الـ Client ID من console.cloud.google.com\\nفي أول السكربت'); return; }
-  if(!gisInited){ alert('جاري تحميل جوجل...'); return; }
-  if(gmailAccessToken){ openGmailImport(); return; }
-  tokenClient.requestAccessToken({prompt:'consent'});
-}
-function openGmailImport(){ document.getElementById('gmailModal').classList.add('show'); if(gmailAccessToken) fetchGmailEmails(); }
-function closeGmailImport(){ document.getElementById('gmailModal').classList.remove('show'); }
-async function fetchGmailEmails(){
-  if(!gmailAccessToken){ document.getElementById('gmailList').innerHTML='<div style="text-align:center;padding:20px;color:var(--text-soft)">مش مربوط بجيميل</div>'; return; }
-  document.getElementById('gmailList').innerHTML='<div style="text-align:center;padding:20px">⏳ بيحمل...</div>';
-  try{
-    const res = await gapi.client.gmail.users.messages.list({userId:'me', maxResults:12, q:'newer_than:7d'});
-    const msgs = res.result.messages || [];
-    if(!msgs.length){ document.getElementById('gmailList').innerHTML='<div style="text-align:center;padding:20px;color:var(--text-soft)">مفيش إيميلات جديدة</div>'; return; }
-    let html='';
-    for(let m of msgs){
-      const detail = await gapi.client.gmail.users.messages.get({userId:'me', id:m.id, format:'metadata', metadataHeaders:['Subject','From']});
-      const headers = detail.result.payload.headers;
-      const subj = (headers.find(h=>h.name==='Subject')?.value || '(بدون عنوان)').replace(/'/g,'');
-      const from = (headers.find(h=>h.name==='From')?.value || '').replace(/'/g,'');
-      html+=`<div style="background:var(--bg-soft);border:1px solid var(--card-border);border-radius:10px;padding:9px"><div style="font-weight:700;font-size:11px;color:var(--text)">${subj}</div><div style="font-size:9.5px;color:var(--text-soft)">${from}</div><button onclick="addEmailAsTask('${subj}','${from}')" style="margin-top:7px;background:var(--hero);color:#fff;border:none;padding:5px 10px;border-radius:7px;font-size:10px">+ حول لمهمة</button></div>`;
-    }
-    document.getElementById('gmailList').innerHTML=html;
-  }catch(e){ console.error(e); document.getElementById('gmailList').innerHTML='<div style="color:#ef4444;text-align:center;font-size:11px">خطأ - سجل دخول تاني<br>'+e.message+'</div>'; localStorage.removeItem('gmail_token'); gmailAccessToken=null; }
-}
-function addEmailAsTask(subj, from){
-  tasks.unshift({id:Date.now(), text:subj, cat:cats[0]?.name||'شغل', color:selectedHex||'#ffffff', done:false, drawings:[], photos:[], voices:[], note:`<div>📧 من: ${from}<br>${subj}</div>`, subtasks:[], reminder:null, source:'gmail'});
-  save(); alert('✅ اتضافت كمهمة'); closeGmailImport();
-}
-async function exportTasksToGmail(){
-  if(!gmailAccessToken){ alert('اربط جيميل الأول'); return; }
-  const summary = tasks.slice(0,25).map(t=>`• [${t.done?'✓':' '}] ${t.text} (${t.cat})`).join('\\n');
-  const emailContent = `To: me\\r\\nSubject: ملخص مهامي - مساحة العمل\\r\\nContent-Type: text/plain; charset=utf-8\\r\\n\\r\\n${summary}`;
-  const raw = btoa(unescape(encodeURIComponent(emailContent))).replace(/\\+/g,'-').replace(/\\//g,'_').replace(/=+$/, '');
-  try{
-    await gapi.client.gmail.users.messages.send({userId:'me', resource:{raw}});
-    alert('📧 اتبعت ملخص مهامك لإيميلك');
-  }catch(e){ alert('فشل الإرسال'); console.error(e); }
-}
-</script>
-<script>
-/* ===== TASKS LOGIC - مدمج ومحدث ===== */
-function loadOldTasks(){let old=JSON.parse(localStorage.getItem('tasks_v6')||'null');if(!old||old.length===0){old=JSON.parse(localStorage.getItem('tasks_v5')||localStorage.getItem('tasks')||'[]');}return old||[];}
+/* نفس كل كودك القديم + المنبه الاحترافي + حفظ المؤشر - مختصر للقراءة */
+function loadOldTasks(){let old=JSON.parse(localStorage.getItem('tasks_v6')||'null');if(!old||old.length===0){old=JSON.parse(localStorage.getItem('tasks_v5')||localStorage.getItem('tasks')||'[]');}return old;}
 function fmt(n){if(n===''||n==null)return'';let x=typeof n==='string'?parseFloat(n.toString().replace(/,/g,'')):n;if(isNaN(x))return n;return x.toLocaleString('en-US')}
-function formatTextNumbers(t){return (t||'').replace(/\\b\\d{4,}\\b/g,m=>fmt(m))}
+function formatTextNumbers(t){return (t||'').replace(/\b\d{4,}\b/g,m=>fmt(m))}
 const themeColors=[["#70AD47","#5B9BD5","#FFC000","#A5A5A5","#ED7D31","#4472C4","#2F5597","#D9D9D9","#000000","#FFFFFF"],["#E2EFDA","#D6EAF8","#FFF2CC","#F2F2F2","#FCE4D6","#D9E2F3","#D6DCE4","#EDEDED","#808080","#F2F2F2"],["#C6E0B4","#BDD7EE","#FFE699","#D9D9D9","#F8CBAD","#B4C6E7","#ACB9CA","#BFBFBF","#595959","#D9D9D9"],["#A9D08E","#9BC2E6","#FFD966","#BFBFBF","#F4B084","#8EA9DB","#7F8EA6","#808080","#262626","#BFBFBF"],["#548235","#2E75B6","#BF8F00","#7F7F7F","#C55A11","#305496","#203764","#404040","#0D0D0D","#7F7F7F"],["#375623","#1F4E79","#7F6003","#595959","#833C0B","#203764","#152238","#000000","#404040"]];
 const standardColors=["#7030A0","#002060","#0070C0","#00B0F0","#00B050","#92D050","#FFFF00","#FFC000","#FF0000","#C00000"];
 let defaultCats=[{id:1,emoji:'💊',name:'صيدلية'},{id:2,emoji:'💻',name:'شغل'},{id:3,emoji:'🏠',name:'شخصي'}];
+let defaultColorsList=[{id:1,name:'أبيض',hex:'#ffffff'}];
 let cats=JSON.parse(localStorage.getItem('cats_v5')||JSON.stringify(defaultCats));
+let colors=JSON.parse(localStorage.getItem('colors_v5')||JSON.stringify(defaultColorsList));
 let tasks=loadOldTasks();
 if(tasks.length===0){tasks=[{id:Date.now(),text:'طلبية صيدلية',cat:'صيدلية',color:'#E2EFDA',done:false,drawings:[],photos:[],voices:[],note:'',subtasks:[],reminder:null}];}
 let cur=null,rec=null,chunks=[],timerInt=null,sec=0,stream=null,cameraStream=null;
 const canvas=document.getElementById('canvas'),ctx=canvas.getContext('2d');
 let drawing=false,lx=0,ly=0,selectedHex='#ffffff',activeTaskTab='all',boardSearch='',currentNoteColor='#111111',currentHiddenColor='#ffffff',currentFontSize=12,currentHiddenFontSize=12;
 let lastNoteRange=null,lastHiddenRange=null;
-function save(){localStorage.setItem('tasks_v6',JSON.stringify(tasks));localStorage.setItem('cats_v5',JSON.stringify(cats));render()}
+function save(){localStorage.setItem('tasks_v6',JSON.stringify(tasks));localStorage.setItem('cats_v5',JSON.stringify(cats));localStorage.setItem('colors_v5',JSON.stringify(colors));render()}
 function renderExcelTheme(){const c1=document.getElementById('excelTheme');if(c1){c1.innerHTML='';themeColors.flat().forEach(hex=>{const d=document.createElement('div');d.className='excel-cell';d.style.background=hex;d.onclick=()=>selectColor(hex);c1.appendChild(d);});}const c2=document.getElementById('excelStandard');if(c2){c2.innerHTML='';standardColors.forEach(hex=>{const d=document.createElement('div');d.className='excel-cell';d.style.background=hex;d.onclick=()=>selectColor(hex);c2.appendChild(d);});}const m1=document.getElementById('modalColorsTheme');if(m1){m1.innerHTML='';themeColors.flat().forEach(hex=>{const d=document.createElement('div');d.className='excel-cell';d.style.background=hex;d.style.height='20px';if(cur&&cur.color===hex)d.style.outline='2px solid var(--hero)';d.onclick=()=>selectModalColor(hex);m1.appendChild(d);});}const m2=document.getElementById('modalColorsStandard');if(m2){m2.innerHTML='';standardColors.forEach(hex=>{const d=document.createElement('div');d.className='excel-cell';d.style.background=hex;d.style.height='20px';if(cur&&cur.color===hex)d.style.outline='2px solid var(--hero)';d.onclick=()=>selectModalColor(hex);m2.appendChild(d);});}}
-function renderManagerLists(){document.getElementById('cat').innerHTML=cats.map(c=>`<option value="${c.name}">${c.emoji} ${c.name}</option>`).join('');document.getElementById('catList').innerHTML=cats.map(c=>`<div style="display:flex;justify-content:space-between;align-items:center;background:var(--bg-soft);padding:7px 9px;border-radius:8px;margin-bottom:5px;border:1px solid var(--card-border)"><div style="color:var(--text);font-size:10.3px">${c.emoji} <b>${c.name}</b></div><button onclick="delCat(${c.id})" style="border:none;background:#FEE2E2;width:25px;height:25px;border-radius:6px;color:#ef4444">✕</button></div>`).join('');renderQuickColors();renderExcelTheme();if(window.renderThemesList) renderThemesList();}
+function renderManagerLists(){document.getElementById('cat').innerHTML=cats.map(c=>`<option value="${c.name}">${c.emoji} ${c.name}</option>`).join('');document.getElementById('catList').innerHTML=cats.map(c=>`<div style="display:flex;justify-content:space-between;align-items:center;background:var(--bg-soft);padding:7px 9px;border-radius:8px;margin-bottom:5px;border:1px solid var(--card-border)"><div style="color:var(--text);font-size:10.3px">${c.emoji} <b>${c.name}</b></div><button onclick="delCat(${c.id})" style="border:none;background:#FEE2E2;width:25px;height:25px;border-radius:6px;color:#ef4444">✕</button></div>`).join('');renderQuickColors();renderExcelTheme()}
 function renderQuickColors(){const row=document.getElementById('quickColors');const all=[...standardColors,...themeColors[0]];row.innerHTML=all.slice(0,8).map(c=>`<div onclick="selectColor('${c}')" class="color-dot ${selectedHex===c?'active':''}" style="background:${c}"></div>`).join('')}
 function selectColor(hex){selectedHex=hex;renderQuickColors()}
 function selectModalColor(hex){if(!cur)return;cur.color=hex;document.getElementById('modalCover').style.background=hex;document.getElementById('currentColorPreview').style.background=hex;renderExcelTheme();save()}
 function toggleAllColors(){const box=document.getElementById('allColorsBox');box.style.display=box.style.display==='none'?'block':'none'}
 function openManager(){document.getElementById('managerModal').style.display='flex';mTab('cats')}
 function closeManager(){document.getElementById('managerModal').style.display='none'}
-function mTab(t){document.getElementById('mCats').style.display=t==='cats'?'block':'none';document.getElementById('mColors').style.display=t==='colors'?'block':'none';document.getElementById('mThemes').style.display=t==='themes'?'block':'none';document.getElementById('mTabCats').style.background=t==='cats'?'var(--card)':'transparent';document.getElementById('mTabColors').style.background=t==='colors'?'var(--card)':'transparent';document.getElementById('mTabThemes').style.background=t==='themes'?'var(--card)':'transparent';}
+function mTab(t){document.getElementById('mCats').style.display=t==='cats'?'block':'none';document.getElementById('mColors').style.display=t==='colors'?'block':'none';}
 function addCategory(){const n=document.getElementById('newCatName').value.trim(),e=document.getElementById('newCatEmoji').value.trim()||'📌';if(!n)return;cats.push({id:Date.now(),emoji:e,name:n});document.getElementById('newCatName').value='';renderManagerLists();save();}
 function delCat(id){cats=cats.filter(c=>c.id!==id);renderManagerLists();save();}
 function addQuick(){document.getElementById('mainInput').focus()}
-function filterTasksTab(cat){activeTaskTab=cat;document.querySelectorAll('.filter-chip').forEach(b=>b.classList.remove('active'));document.getElementById('tt_'+cat)?.classList.add('active');render();}
+function filterTasksTab(cat){
+  // if leaving hidden tab, hide it again
+  if(activeTaskTab==='مخفي' && cat!=='مخفي'){
+    hiddenCatRevealed=false;
+    const hid=document.getElementById('tt_مخفي');
+    if(hid){ hid.classList.remove('revealed'); hid.style.display='none'; hid.classList.remove('active'); }
+  }
+  activeTaskTab=cat;
+  document.querySelectorAll('.filter-chip').forEach(b=>b.classList.remove('active'));
+  const target=document.getElementById('tt_'+cat) || document.getElementById('tt_'+cat.replace(/[^\w]/g,''));
+  if(target) target.classList.add('active');
+  else {
+    // dynamic cats
+    document.querySelectorAll('#dynamicCatsChips .filter-chip').forEach(ch=>{
+      if(ch.textContent.includes(cat) || ch.getAttribute('onclick')?.includes(cat)) ch.classList.add('active');
+    });
+  }
+  document.getElementById('tt_'+cat)?.classList.add('active');
+  render();
+}
+function hideHiddenTabNow(){
+  hiddenCatRevealed=false;
+  activeTaskTab='all';
+  const hid=document.getElementById('tt_مخفي');
+  if(hid){ hid.classList.remove('revealed'); hid.style.display='none'; }
+  document.querySelectorAll('.filter-chip').forEach(b=>b.classList.remove('active'));
+  document.getElementById('tt_all')?.classList.add('active');
+  render();
+}
+
 function getSecretCode(){try{const v=localStorage.getItem('__my_secret_num__');if(!v) return '279';return atob(v);}catch{return '279'}}
-function doAdd(){const inp=document.getElementById('mainInput');const val=inp.value.trim();if(!val) return;const secret=getSecretCode();if(val===secret){inp.value='';boardSearch='';revealHiddenTab();return;}tasks.unshift({id:Date.now(),text:val,cat:document.getElementById('cat').value||cats[0].name,color:selectedHex||'#ffffff',done:false,drawings:[],photos:[],voices:[],note:'',subtasks:[],reminder:null});inp.value='';boardSearch='';save();}
-document.getElementById('mainInput').addEventListener('input',e=>{const v=e.target.value.trim();const secret=getSecretCode();if(v===secret){revealHiddenTab();return;}boardSearch=v.toLowerCase();render();});
+let hiddenCatRevealed=false;
+function doAdd(){
+  const inp=document.getElementById('mainInput');
+  const val=inp.value.trim();
+  if(!val) return;
+  const secret=getSecretCode();
+  if(val===secret){
+    inp.value=''; boardSearch='';
+    hiddenCatRevealed=true;
+    document.querySelectorAll('.hidden-chip').forEach(el=>el.classList.add('revealed'));
+    // create hidden category if not exists
+    if(!cats.find(c=>c.name==='مخفي')){
+      cats.push({id:Date.now(), emoji:'🔒', name:'مخفي', hidden:true});
+      localStorage.setItem('cats_v5', JSON.stringify(cats));
+    }
+    activeTaskTab='مخفي';
+    document.querySelectorAll('.filter-chip').forEach(b=>b.classList.remove('active'));
+    const hidBtn=document.getElementById('tt_مخفي');
+    if(hidBtn){ hidBtn.classList.add('active'); hidBtn.style.display='inline-flex'; }
+    render();
+    return;
+  }
+  tasks.unshift({id:Date.now(),text:val,cat:document.getElementById('cat').value||cats[0].name,color:selectedHex||'#ffffff',done:false,drawings:[],photos:[],voices:[],note:'',subtasks:[],reminder:null, innerTabs:[]});
+  inp.value=''; boardSearch=''; save();
+}
+document.getElementById('mainInput').addEventListener('input',e=>{
+  const v=e.target.value.trim();
+  const secret=getSecretCode();
+  if(v===secret){
+    // secret code entered - reveal hidden category, don't filter
+    e.target.value='';
+    hiddenCatRevealed=true;
+    document.querySelectorAll('.hidden-chip').forEach(el=>el.classList.add('revealed'));
+    if(!cats.find(c=>c.name==='مخفي')){
+      cats.push({id:Date.now(), emoji:'🔒', name:'مخفي', hidden:true});
+      localStorage.setItem('cats_v5', JSON.stringify(cats));
+    }
+    activeTaskTab='مخفي';
+    document.querySelectorAll('.filter-chip').forEach(b=>b.classList.remove('active'));
+    document.getElementById('tt_مخفي')?.classList.add('active');
+    render();
+    return;
+  }
+  boardSearch=v.toLowerCase();
+  render();
+});
 document.getElementById('mainInput').addEventListener('keydown',e=>{if(e.key==='Enter')doAdd()});
 document.getElementById('subInput').addEventListener('keydown',e=>{if(e.key==='Enter')addSub()});
-function render(){renderManagerLists();let filtered=tasks;if(activeTaskTab!=='all'){if(activeTaskTab==='done')filtered=filtered.filter(t=>t.done);else filtered=filtered.filter(t=>t.cat===activeTaskTab);}if(boardSearch)filtered=filtered.filter(t=>t.text.toLowerCase().includes(boardSearch));document.getElementById('stats').innerText=`${fmt(filtered.length)}/${fmt(tasks.length)} • ${activeTaskTab}`;const board=document.getElementById('board');if(!filtered.length){board.innerHTML=`<div style="text-align:center;padding:23px 11px;color:var(--text-soft)"><div style="font-size:28px">📭</div><div style="margin-top:7px;font-size:10.3px">مفيش مهام</div></div>`;return}board.innerHTML=filtered.map(t=>{const catObj=cats.find(c=>c.name===t.cat)||{emoji:'📌'};const total=t.subtasks?.length||0,done=t.subtasks?.filter(s=>s.done).length||0;const hasRem=t.reminder&&t.reminder.enabled? '⏰':'';return `<div onclick="openCard(${t.id})" style="background:${t.color==='white'||t.color==='#ffffff'? 'var(--card)' : t.color};border:1px solid var(--card-border);border-radius:11px;padding:8px 9px;cursor:pointer"><div style="display:flex;justify-content:space-between;gap:7px"><div style="font-size:11.5px;font-weight:700;flex:1;color:var(--text)">${hasRem} ${formatTextNumbers(t.text)} ${t.source==='gmail'?'<span style="font-size:9px">📧</span>':''}</div><div style="width:9px;height:9px;border-radius:50%;background:${t.done?'#22c55e':'var(--hero)'};flex-shrink:0;margin-top:4px"></div></div><div style="display:flex;gap:5px;margin-top:7px;flex-wrap:wrap"><span style="font-size:9.2px;background:var(--card);padding:4px 7px;border-radius:99px;font-weight:700;border:1px solid var(--card-border);color:var(--text-soft)">${catObj.emoji} ${t.cat}</span>${total?`<span style="font-size:9.2px;background:var(--card);padding:4px 7px;border-radius:99px;font-weight:700;border:1px solid var(--card-border);color:var(--text-soft)">✔ ${fmt(done)}/${fmt(total)}</span>`:''}${hasRem?`<span style="font-size:9.2px;background:#DBEAFE;padding:4px 7px;border-radius:99px;font-weight:700;color:#2563EB">${t.reminder.repeat}</span>`:''}</div></div>`;}).join('');}
+function render(){
+  renderManagerLists();
+  const hBar=document.getElementById('hiddenBar');
+  if(hBar) hBar.style.display = (hiddenCatRevealed && activeTaskTab==='مخفي') ? 'flex' : 'none';
+  let filtered=tasks;
+  // hide hidden category tasks unless revealed
+  if(!hiddenCatRevealed){
+    filtered=filtered.filter(t=>t.cat!=='مخفي' && !cats.find(c=>c.name===t.cat && c.hidden));
+  }
+  if(activeTaskTab!=='all'){
+    if(activeTaskTab==='done') filtered=filtered.filter(t=>t.done);
+    else filtered=filtered.filter(t=>t.cat===activeTaskTab);
+  }
+  
+  if(boardSearch){
+    const q=boardSearch.toLowerCase();
+    filtered=filtered.filter(t=>{
+      // build searchable blob
+      let blob='';
+      try{
+        blob+= (t.text||'') + ' ' + (t.cat||'') + ' ';
+        // note - strip html tags
+        if(t.note){ blob+= t.note.replace(/<[^>]*>/g,' ') + ' '; }
+        // subtasks
+        if(t.subtasks && t.subtasks.length){
+          t.subtasks.forEach(s=>{ blob+= (s.text||'') + ' '; });
+        }
+        // inner tabs - titles + content
+        if(t.innerTabs && t.innerTabs.length){
+          t.innerTabs.forEach(it=>{
+            blob+= (it.title||'') + ' ';
+            if(it.content) blob+= it.content.replace(/<[^>]*>/g,' ') + ' ';
+          });
+        }
+        // drawings/photos/voices count not searchable but add type
+        // also search by id? no
+      }catch(e){}
+      return blob.toLowerCase().includes(q);
+    });
+  }
+
+document.getElementById('stats').innerText= boardSearch ? `🔍 ${fmt(filtered.length)} نتيجة لـ "${boardSearch}" • ${activeTaskTab}` : `${fmt(filtered.length)}/${fmt(tasks.length)} • ${activeTaskTab}`;const board=document.getElementById('board');if(!filtered.length){board.innerHTML=`<div style="text-align:center;padding:23px 11px;color:var(--text-soft)"><div style="font-size:28px">📭</div><div style="margin-top:7px;font-size:10.3px">مفيش مهام</div></div>`;return}board.innerHTML=filtered.map(t=>{const catObj=cats.find(c=>c.name===t.cat)||{emoji:'📌'};const total=t.subtasks?.length||0,done=t.subtasks?.filter(s=>s.done).length||0;const hasRem=t.reminder&&t.reminder.enabled? '⏰':'';return `<div onclick="openCard(${t.id})" style="background:${t.color==='white'||t.color==='#ffffff'? 'var(--card)' : t.color};border:1px solid var(--card-border);border-radius:11px;padding:8px 9px;cursor:pointer"><div style="display:flex;justify-content:space-between;gap:7px"><div style="font-size:11.5px;font-weight:700;flex:1;color:var(--text)">${hasRem} ${formatTextNumbers(t.text)}</div><div style="width:9px;height:9px;border-radius:50%;background:${t.done?'#22c55e':'var(--hero)'};flex-shrink:0;margin-top:4px"></div></div><div style="display:flex;gap:5px;margin-top:7px;flex-wrap:wrap"><span style="font-size:9.2px;background:var(--card);padding:4px 7px;border-radius:99px;font-weight:700;border:1px solid var(--card-border);color:var(--text-soft)">${catObj.emoji} ${t.cat}</span>${total?`<span style="font-size:9.2px;background:var(--card);padding:4px 7px;border-radius:99px;font-weight:700;border:1px solid var(--card-border);color:var(--text-soft)">✔ ${fmt(done)}/${fmt(total)}</span>`:''}${hasRem?`<span style="font-size:9.2px;background:#DBEAFE;padding:4px 7px;border-radius:99px;font-weight:700;color:#2563EB">${t.reminder.repeat}</span>`:''}</div></div>`;}).join('');}
 async function openCamera(){const box=document.getElementById('cameraBox');box.style.display='block';try{cameraStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"}}});document.getElementById('cameraVideo').srcObject=cameraStream;}catch(e){alert('الكاميرا غير مسموحة');}}
 function closeCamera(){document.getElementById('cameraBox').style.display='none';if(cameraStream){cameraStream.getTracks().forEach(t=>t.stop());cameraStream=null;}}
 function takePhoto(){const v=document.getElementById('cameraVideo');const c=document.getElementById('cameraCanvas');c.width=v.videoWidth;c.height=v.videoHeight;c.getContext('2d').drawImage(v,0,0);const d=c.toDataURL('image/jpeg',0.8);if(!cur.photos)cur.photos=[];cur.photos.unshift(d);refreshPhotos();closeCamera();save();}
@@ -280,5 +368,4 @@ function delPhoto(i){cur.photos.splice(i,1);refreshPhotos();save();}
 function toggleRem(){const en=document.getElementById('remEnabled').checked;document.getElementById('remBox').style.display=en?'block':'none'; if(en) updateNextPreview();}
 function updateRepeatUI(){const v=document.getElementById('remRepeat').value;document.getElementById('customRepeatBox').style.display=(v.startsWith('custom')||v=='weekdays')?'block':'none';document.getElementById('customDaysUI').style.display=v=='custom_days'?'block':'none';document.getElementById('customHoursUI').style.display=v=='custom_hours'?'block':'none';document.getElementById('weekdaysUI').style.display=v=='weekdays'?'block':'none';updateNextPreview();}
 function updateEndUI(){const v=document.getElementById('remEndType').value;document.getElementById('remAfterCount').style.display=v=='after'?'block':'none';document.getElementById('remEndDate').style.display=v=='onDate'?'block':'none';updateNextPreview();}
-function getProReminder(){return{enabled:document.getElementById('remEnabled').checked,date:document.getElementById('remDate').value,time:document.getElementById('remTime').value,repeat:document.getElementById('remRepeat').value,everyDays:parseInt(document.getElementById('remEveryDays')?.value||2),everyHours:parseInt(document.getElementById('remEveryHours')?.value||3),weekdays:Array.from(document.querySelectorAll('.wd:checked')).map(x=>parseInt(x.value)),endType:document.getElementById('remEndType').value,afterCount:parseInt(document.getElementById('remAfterCount')?.value||0),endDate:document.getElementById('remEndDate')?.value||null,countDone:cur?.reminder?.countDone||0}}
-function getNe
+function getProRe
